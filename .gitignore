@@ -1,0 +1,7 @@
+/vendor/
+.docs
+.trash
+.installed
+.vscode
+.phpunit.result.cache
+.DS_Store
