@@ -30,7 +30,7 @@
                 <label for="ssh-profile">Backup Profile</label>
                 <select id="ssh-profile" name="profile" class="form-control" required>
                     <option value="">Select a profile</option>
-                    @foreach (['Switches and firewalls' => $switches, 'Servers' => $servers] as $group => $profiles)
+                    @foreach (['Switches and firewalls' => $switches, 'Routers and radios' => $fileProfiles, 'Servers' => $servers] as $group => $profiles)
                         <optgroup label="{{ $group }}">
                             @foreach ($profiles as $option)
                                 <option value="{{ $option }}" @selected(old('profile', $profile) === $option)>{{ $option }}</option>
@@ -74,6 +74,7 @@
                 <legend>Switch CLI Settings</legend>
                 <label for="ssh-prompt">CLI Hostname</label>
                 <input class="form-control" id="ssh-prompt" name="prompt_name" value="{{ old('prompt_name', $promptName) }}">
+                <span class="help-block">EdgeSwitch detects the CLI hostname automatically.</span>
 
                 <label for="ssh-enable">Enable Password</label>
                 <input type="password" class="form-control" id="ssh-enable" name="enable_password" autocomplete="new-password"

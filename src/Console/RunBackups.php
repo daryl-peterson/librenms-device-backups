@@ -214,7 +214,7 @@ final class RunBackups extends Command {
 
     private function deviceSettings(Device $device): array {
         $settings = Target::get($device);
-        if (!in_array($settings['profile'] ?? null, [...Target::SWITCHES, ...Target::SERVERS], true)
+        if (!in_array($settings['profile'] ?? null, Target::profiles(), true)
             || !SshConnection::validFingerprint($settings['fingerprint'] ?? '')
             || ($settings['user'] ?? '') === '' || ($settings['password'] ?? '') === ''
             || !filter_var($settings['port'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]])) {
@@ -234,9 +234,7 @@ final class RunBackups extends Command {
             Archives::checkSpace($run, $reserve);
             $settings = $this->deviceSettings($device);
             $result['profile'] = $settings['profile'];
-            $member = in_array($settings['profile'], Target::SWITCHES, true)
-                ? 'running-config.txt'
-                : 'configuration-and-state.tar.gz';
+            $member = Target::archiveMember($settings['profile']);
             $stage = "$run/.$id-$member";
             $ssh = DeviceSshStatus::connect($device, $settings);
             Collector::capture($ssh, Target::promptName($device, $settings), $settings, $stage);

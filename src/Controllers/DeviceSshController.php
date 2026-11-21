@@ -53,6 +53,7 @@ final class DeviceSshController extends Controller {
             'hasPassword' => isset($settings['password']) && $settings['password'] !== '',
             'hasEnablePassword' => !empty($settings['enable']),
             'switches' => Target::SWITCHES,
+            'fileProfiles' => array_keys(Target::CONFIG_FILES),
             'servers' => Target::SERVERS,
             'check' => DeviceSshStatus::get($device),
         ]);
@@ -65,14 +66,16 @@ final class DeviceSshController extends Controller {
         $fields = ['profile', 'ssh_user', 'ssh_port', 'fingerprint', 'prompt_name', 'clear_enable'];
         $safeInput = array_filter($request->only($fields), 'is_scalar');
 
-        $switch = in_array($request->input('profile'), Target::SWITCHES, true);
+        $profile = $request->input('profile');
+        $switch = in_array($profile, Target::SWITCHES, true);
+        $needsCliHostname = is_string($profile) && Target::needsCliHostname($profile);
         $validator = Validator::make($request->all(), [
-            'profile' => ['required', Rule::in([...Target::SWITCHES, ...Target::SERVERS])],
+            'profile' => ['required', Rule::in(Target::profiles())],
             'ssh_user' => ['required', 'string', 'max:255'],
             'ssh_port' => ['required', 'integer', 'between:1,65535'],
             'fingerprint' => ['required', 'string', 'regex:/\\ASHA256:[a-zA-Z0-9+\\/]{43}\\z/'],
             'ssh_password' => [isset($saved['password']) && $saved['password'] !== '' ? 'nullable' : 'required', 'string'],
-            'prompt_name' => [Rule::excludeIf(!$switch), 'required', 'string', 'max:128', 'regex:/\\A[a-zA-Z0-9_.-]+\\z/'],
+            'prompt_name' => [Rule::excludeIf(!$needsCliHostname), 'required', 'string', 'max:128', 'regex:/\\A[a-zA-Z0-9_.-]+\\z/'],
             'enable_password' => ['nullable', 'string', 'not_regex:/[\\r\\n]/'],
             'clear_enable' => ['nullable', 'boolean'],
         ], [], ['fingerprint' => 'host key fingerprint']);
@@ -89,7 +92,7 @@ final class DeviceSshController extends Controller {
                 'port' => (int) $data['ssh_port'],
                 'fingerprint' => $data['fingerprint'],
                 'password' => $data['ssh_password'] ?? $saved['password'],
-                'prompt_name' => $switch ? $data['prompt_name'] : '',
+                'prompt_name' => $data['prompt_name'] ?? '',
                 'enable' => $switch && !$request->boolean('clear_enable')
                     ? ($data['enable_password'] ?? $saved['enable'] ?? null)
                     : null,

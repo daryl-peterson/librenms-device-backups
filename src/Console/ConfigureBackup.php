@@ -33,7 +33,7 @@ final class ConfigureBackup extends Command {
             return self::SUCCESS;
         }
 
-        $profiles = [...Target::SWITCHES, ...Target::SERVERS];
+        $profiles = Target::profiles();
         $profile = $this->option('profile') ?: Target::profile($device);
         if (!in_array($profile, $profiles, true)) {
             $this->error('Choose a supported --profile: ' . implode(', ', $profiles));
@@ -50,13 +50,15 @@ final class ConfigureBackup extends Command {
         $password = $this->secret('SSH password', false);
         $promptName = '';
         $enable = null;
+        if (Target::needsCliHostname($profile)) {
+            $promptName = trim((string) $this->ask('Device CLI hostname', Target::promptName($device, [])));
+        }
         if (in_array($profile, Target::SWITCHES, true)) {
-            $promptName = trim((string) $this->ask('Device CLI hostname', Target::promptName($device, ['prompt_name' => null])));
             $enable = $this->secret('Enable password (press Enter if unused)', false);
         }
 
         if ($user === '' || !$port || !SshConnection::validFingerprint($fingerprint) || !is_string($password) || $password === ''
-            || preg_match('/[\r\n]/', $enable ?? '') || (in_array($profile, Target::SWITCHES, true) && !preg_match('/\A[a-zA-Z0-9_.-]+\z/', $promptName))) {
+            || preg_match('/[\r\n]/', $enable ?? '') || (Target::needsCliHostname($profile) && !preg_match('/\A[a-zA-Z0-9_.-]+\z/', $promptName))) {
             $this->error('Check the SSH credentials, port, host key fingerprint, and CLI hostname.');
             return self::FAILURE;
         }

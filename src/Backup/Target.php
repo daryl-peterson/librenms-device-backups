@@ -9,7 +9,12 @@ use Illuminate\Support\Facades\Crypt;
 
 final class Target {
     public const ATTRIBUTE = 'device_backups_ssh';
-    public const SWITCHES = ['dell', 'ios', 'nxos', 'asa', 'timos'];
+    public const SWITCHES = ['dell', 'ios', 'nxos', 'asa', 'timos', 'edgeswitch'];
+    public const CONFIG_FILES = [
+        'edgeos' => '/config/config.boot',
+        'airos' => '/tmp/system.cfg',
+        'airfiber' => '/tmp/system.cfg',
+    ];
     public const SERVERS = ['dhcp', 'dns', 'dhcp-dns', 'dhcp-dns-old', 'dns-old', 'kea', 'dhcp-helper', 'kea-helper'];
 
     public static function profile(Device $device): ?string {
@@ -19,8 +24,28 @@ final class Target {
             'asa' => 'asa',
             'timos' => 'timos',
             'dnos', 'powerconnect' => 'dell',
+            'edgeos', 'airos' => $device->os,
+            'airos-af' => 'airfiber',
+            'edgeswitch' => preg_match('/\b(?:UniFi|USW|US-\d)/i', $device->hardware . ' ' . $device->sysDescr)
+                ? null : 'edgeswitch',
             default => null,
         };
+    }
+
+    public static function profiles(): array {
+        return [...self::SWITCHES, ...array_keys(self::CONFIG_FILES), ...self::SERVERS];
+    }
+
+    public static function needsCliHostname(string $profile): bool {
+        return $profile !== 'edgeswitch' && in_array($profile, self::SWITCHES, true);
+    }
+
+    public static function archiveMember(string $profile): string {
+        if (isset(self::CONFIG_FILES[$profile])) {
+            return basename(self::CONFIG_FILES[$profile]);
+        }
+
+        return in_array($profile, self::SWITCHES, true) ? 'running-config.txt' : 'configuration-and-state.tar.gz';
     }
 
     public static function get(Device $device): array {

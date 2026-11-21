@@ -34,9 +34,12 @@ Enter the SSH username and password, port, and independently verified SHA256 hos
 
 | Platform | Profiles |
 | --- | --- |
-| Switches and firewalls | `dell`, `ios`, `nxos`, `asa`, `timos` |
+| Switches and firewalls | `dell`, `ios`, `nxos`, `asa`, `timos`, `edgeswitch` |
+| Ubiquiti EdgeRouter and radios | `edgeos`, `airos`, `airfiber` |
 | DHCP, DNS, and Kea | `dhcp`, `dns`, `dhcp-dns`, `dhcp-dns-old`, `dns-old`, `kea` |
 | Hosts with restricted export helpers | `dhcp-helper`, `kea-helper` |
+
+EdgeRouter (`edgeos`) reads the saved startup configuration `/config/config.boot`. EdgeSwitch (`edgeswitch`) reads the running configuration and detects its CLI prompt automatically. airOS (`airos`) and classic airFiber (`airfiber`, with an `AF…#` SSH prompt) read `/tmp/system.cfg`. UniFi controller backups, airFiber 60, and LTU use different profiles or backup workflows and are outside this support. [EdgeRouter configuration files](https://help.uisp.com/hc/en-us/articles/22591188157079-EdgeRouter-Archiving-and-Managing-the-Configuration-Files) · [EdgeSwitch CLI reference](https://dl.ui.com/guides/edgemax/EdgeSwitch_CLI_Command_Reference_UG.pdf) · [airOS and airFiber collectors](https://github.com/ytti/oxidized/tree/master/lib/oxidized/model) · [UniFi backups](https://help.ui.com/hc/en-us/articles/360008976393-Backups-and-Migration-in-UniFi)
 
 Standard server profiles require an SSH account that can read the selected files. Helper profiles call the existing `/usr/local/sbin/netmonitor-dhcp-backup` or `/usr/local/sbin/netmonitor-kea-backup` via noninteractive sudo. Telnet and the deployment-specific SMx export are outside these profiles.
 
@@ -55,3 +58,14 @@ The backup database stores the run, per-device results, and AES-256 ZIP data. Em
 ```
 
 The export command verifies the stored checksum before publishing the file. Test restoration separately for each device or server profile.
+
+## Tests
+
+Run these commands from the plugin checkout. The suite uses PHP 8.4 or later with PDO SQLite, Phar, zlib, ZIP with AES-256 support, and the [PHPUnit extensions](https://docs.phpunit.de/en/12.5/installation.html).
+
+```bash
+composer install
+composer test
+```
+
+Use `composer test -- --testsuite unit` for unit tests or `composer test -- --testsuite database` for the in-memory SQLite tests. SSH is mocked, and archives are written to temporary directories. Composer installs the test dependencies in `.test-vendor`. The suite runs independently of a LibreNMS installation.

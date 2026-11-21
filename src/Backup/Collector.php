@@ -20,21 +20,33 @@ final class Collector {
             }
             return;
         }
+        if (isset(Target::CONFIG_FILES[$profile])) {
+            self::captureDeviceFile($ssh, $profile, $path);
+            return;
+        }
         if (!in_array($profile, Target::SERVERS, true)) {
             throw new BackupFailure('Unsupported backup profile.');
         }
 
-        self::serverArchive($ssh, self::archiveCommand($profile), $path);
+        self::remoteExport($ssh, self::archiveCommand($profile), $path);
         self::validateArchive($path, $profile);
     }
 
     private static function switchConfig(SSH2 $ssh, string $hostname, string $profile, #[\SensitiveParameter] ?string $enable): string {
-        $stem = ($profile === 'timos' ? '\\*?[AB]:' : '') . preg_quote($hostname, '~');
-        $prompt = "~^$stem#\\h*\\z~m";
+        $stem = match ($profile) {
+            'edgeswitch' => '\([^()\r\n]+\)\h*',
+            'timos' => '\\*?[AB]:' . preg_quote($hostname, '~'),
+            default => preg_quote($hostname, '~'),
+        };
         $ssh->setWindowSize(200, 24);
         $ssh->setTimeout(15);
         $ssh->openShell();
         $screen = self::readPrompt($ssh, "~^{$stem}[>#]\\h*\\z~m");
+        if ($profile === 'edgeswitch') {
+            preg_match('~^(\([^()\r\n]+\))\h*[>#]\h*\z~m', $screen, $matches);
+            $stem = preg_quote($matches[1], '~') . '\h*';
+        }
+        $prompt = "~^$stem#\\h*\\z~m";
         if (str_ends_with(rtrim($screen), '>')) {
             $ssh->write("enable\n");
             $screen = self::readPrompt($ssh, "~^(?:$stem#|(?i:password:))\\h*\\z~m");
@@ -58,13 +70,16 @@ final class Collector {
         if (preg_match(self::CLI_ERRORS, self::readPrompt($ssh, $prompt))) {
             throw new BackupFailure('Device rejected the pagination command.');
         }
-        $ssh->write($command . "\n");
-        $text = trim(preg_replace($prompt, '', self::readPrompt($ssh, $prompt, 180)));
-        if (str_starts_with($text, $command . "\n")) {
-            $text = ltrim(substr($text, strlen($command)));
-        }
+        $text = self::shellOutput($ssh, $command, $prompt);
 
         return self::validateConfig($profile, $hostname, $text) . "\n";
+    }
+
+    private static function shellOutput(SSH2 $ssh, string $command, string $prompt): string {
+        $ssh->write($command . "\n");
+        $text = trim(preg_replace($prompt, '', self::readPrompt($ssh, $prompt, 180)));
+
+        return str_starts_with($text, $command . "\n") ? ltrim(substr($text, strlen($command))) : $text;
     }
 
     private static function readPrompt(SSH2 $ssh, string $pattern, int $seconds = 30): string {
@@ -93,7 +108,7 @@ final class Collector {
     }
 
     private static function validateConfig(string $profile, string $hostname, string $text): string {
-        if (strlen($text) < 1000 || preg_match(self::CLI_ERRORS, $text)) {
+        if (strlen($text) < ($profile === 'edgeswitch' ? 20 : 1000) || preg_match(self::CLI_ERRORS, $text)) {
             throw new BackupFailure('Configuration was too short or contained CLI errors or pagination.');
         }
 
@@ -104,6 +119,8 @@ final class Collector {
             'ios' => $hasInterfaces && $hasHostname && preg_match('/^end\h*\z/m', $text),
             'nxos' => $hasInterfaces && $hasHostname,
             'asa' => $hasInterfaces && preg_match('/^: end\h*$/m', $text),
+            'edgeswitch' => preg_match('/^!?\h*Current Configuration:\h*$/mi', $text)
+                && preg_match('/^\h*(?:configure|vlan database|interface\h+.+)\h*$/m', $text),
             default => $hasInterfaces,
         };
         if (!$complete) {
@@ -111,6 +128,34 @@ final class Collector {
         }
 
         return $text;
+    }
+
+    private static function captureDeviceFile(SSH2 $ssh, string $profile, string $path): void {
+        $command = 'cat ' . Target::CONFIG_FILES[$profile];
+        if ($profile === 'airfiber') {
+            $prompt = '/^AF[\w.-]+#\h*\z/im';
+            $ssh->setTimeout(15);
+            $ssh->openShell();
+            self::readPrompt($ssh, $prompt);
+            $text = self::shellOutput($ssh, $command, $prompt) . "\n";
+            if (file_put_contents($path, $text, LOCK_EX) !== strlen($text)) {
+                throw new BackupFailure('Could not stage the airFiber configuration.');
+            }
+        } else {
+            self::remoteExport($ssh, $command, $path, self::OUTPUT_LIMIT);
+            $text = file_get_contents($path);
+        }
+
+        if (!is_string($text) || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $text) || preg_match(self::CLI_ERRORS, $text)) {
+            throw new BackupFailure('The device did not return a readable configuration file.');
+        }
+
+        $valid = $profile === 'edgeos'
+            ? preg_match('/^(?:system|interfaces)\h*\{\h*\r?$/m', $text) && preg_match('/^\}\h*\r?$/m', $text)
+            : preg_match_all('/^(?:system|netconf|wireless|radio|bridge|users|aaa|httpd|ssh)\.[\w.-]+=.*$/m', $text) >= 2;
+        if (!$valid) {
+            throw new BackupFailure('The device configuration file was empty or did not have the expected format.');
+        }
     }
 
     private static function archiveCommand(string $profile): string {
@@ -150,10 +195,10 @@ final class Collector {
         return '/bin/sh -c ' . escapeshellarg($script);
     }
 
-    private static function serverArchive(SSH2 $ssh, string $command, string $path): void {
+    private static function remoteExport(SSH2 $ssh, string $command, string $path, int $limit = self::EXPORT_LIMIT): void {
         $file = fopen($path, 'wb');
         if (!$file) {
-            throw new BackupFailure('Could not stage the server export.');
+            throw new BackupFailure('Could not stage the remote export.');
         }
 
         $bytes = 0;
@@ -161,18 +206,18 @@ final class Collector {
         try {
             $ssh->enableQuietMode();
             $ssh->setTimeout(20);
-            $ssh->exec($command, static function (string $chunk) use ($file, &$bytes, $deadline): void {
+            $ssh->exec($command, static function (string $chunk) use ($file, &$bytes, $deadline, $limit): void {
                 $bytes += strlen($chunk);
-                if ($bytes > self::EXPORT_LIMIT || hrtime(true) > $deadline) {
-                    throw new BackupFailure('Server export exceeded its size or time limit.');
+                if ($bytes > $limit || hrtime(true) > $deadline) {
+                    throw new BackupFailure('Remote export exceeded its size or time limit.');
                 }
                 if (fwrite($file, $chunk) !== strlen($chunk)) {
-                    throw new BackupFailure('Could not write the server export.');
+                    throw new BackupFailure('Could not write the remote export.');
                 }
             });
 
             if (!$bytes || $ssh->isTimeout() || $ssh->getExitStatus() !== 0) {
-                throw new BackupFailure('Server export failed, was empty, or timed out.');
+                throw new BackupFailure('Remote export failed, was empty, or timed out.');
             }
         } finally {
             fclose($file);
