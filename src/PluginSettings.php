@@ -56,6 +56,15 @@ class PluginSettings {
         $this->settings = (array) $this->plugin?->settings;
     }
 
+    public static function hasDatabaseConfiguration(array $settings): bool {
+        return is_array($settings['database_connection'] ?? null)
+            || env('PLUGIN_DB_DATABASE') !== null
+            || env('PLUGIN_DB_HOST') !== null
+            || env('PLUGIN_DB_PORT') !== null
+            || env('PLUGIN_DB_USERNAME') !== null
+            || env('PLUGIN_DB_PASSWORD') !== null;
+    }
+
     public static function databaseSettings(array $settings): array {
         $saved = $settings['database_connection'] ?? null;
         if (is_array($saved)) {

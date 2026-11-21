@@ -135,14 +135,19 @@ class PluginProvider extends ServiceProvider {
             $pluginManager->publishHook($pluginName, DeviceOverviewHook::class, DeviceOverview::class);
 
             PluginDb::initConfig();
-            PluginDb::checkConnection();
+            $databaseConnected = PluginDb::checkConnection();
 
             if ($this->app->runningInConsole()) {
                 $this->commands([ConfigureBackup::class, ExportBackup::class, ProcessManualBackups::class, RunBackups::class]);
 
                 if ($pluginManager->pluginEnabled($pluginName)) {
-                    $this->app->booted(function () {
-                        $schedule = BackupSchedule::fromSettings(PluginData::getSettings());
+                    $this->app->booted(function () use ($databaseConnected) {
+                        $settings = PluginData::getSettings();
+                        if (!$databaseConnected && !PluginSettings::hasDatabaseConfiguration($settings)) {
+                            return;
+                        }
+
+                        $schedule = BackupSchedule::fromSettings($settings);
                         if ($schedule->enabled) {
                             $this->app->make(Schedule::class)
                                 ->command('device-backups:run')

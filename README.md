@@ -29,6 +29,8 @@ During installation, Laravel's package discovery clears a route cache that is mi
 
 Use **Test, Migrate and Save** again when an update adds a migration or when moving to a different backup database.
 
+On a fresh install, the scheduler waits for a configured backup database if the built-in defaults cannot connect.
+
 Settings also has a **Test SFTP** action for checking a configured SFTP destination. Backup archives are stored in the backup database.
 
 ## Enroll a device and check SSH

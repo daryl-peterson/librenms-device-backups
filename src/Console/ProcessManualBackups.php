@@ -34,10 +34,12 @@ final class ProcessManualBackups extends Command {
             $requests->expireInterrupted();
             $next = $requests->next();
         } catch (QueryException $exception) {
-            $state = (string) $exception->getCode();
-            $message = match ($state) {
-                '42S02', '42S22' => self::MIGRATIONS_REQUIRED,
-                default => "Could not access the manual backup queue (SQLSTATE $state). Check the backup database connection and permissions.",
+            $state = (string) ($exception->errorInfo[0] ?? $exception->getCode());
+            $code = (int) ($exception->errorInfo[1] ?? $exception->getCode());
+            $message = match (true) {
+                in_array($code, [1045, 1698], true) => "The backup database rejected the login (database error $code). Verify the credentials in Device Backups Settings.",
+                in_array($state, ['42S02', '42S22'], true) => self::MIGRATIONS_REQUIRED,
+                default => "Could not access the manual backup queue (database error $code, SQLSTATE $state). Check the backup database connection and permissions.",
             };
             $this->error($message);
             Log::error($message);
