@@ -25,7 +25,10 @@
     "autoload": {
         "psr-4": {
             "DRP\\DeviceBackups\\": "src/"
-        }
+        },
+        "files": [
+            "src/constants.php"
+        ]
     },
      "extra": {
         "laravel": {
