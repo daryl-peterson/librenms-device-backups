@@ -93,7 +93,7 @@ class PluginData {
      * @version 0.0.1
      */
     public static function getPluginModel(): PluginModel|null {
-        $result = PluginModel::where('plugin_name', PLUGIN_NAME)->first();
+        $result = PluginModel::versionTwo()->where('plugin_name', PLUGIN_NAME)->first();
 
         // Check if the plugin exists in the database.
         if (is_null($result)) {

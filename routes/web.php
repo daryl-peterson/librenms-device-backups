@@ -47,6 +47,14 @@ Route::middleware(['web'])
     ->get("plugin/settings/$plugin", [PluginController::class, 'settings'])
     ->name("$plugin.settings");
 
+Route::middleware(['web', 'auth'])
+    ->post("plugin/settings/$plugin/test-connection", [PluginController::class, 'testConnection'])
+    ->name("$plugin.test-connection");
+
+Route::middleware(['web', 'auth'])
+    ->post("plugin/settings/$plugin/save", [PluginController::class, 'saveSettings'])
+    ->name("$plugin.save-settings");
+
 /**
  * Action route
  */

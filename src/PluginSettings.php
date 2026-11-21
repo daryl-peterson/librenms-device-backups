@@ -16,6 +16,7 @@ namespace DRP\DeviceBackups;
 use Throwable;
 use App\Models\Plugin;
 use DRP\DeviceBackups\Log;
+use Illuminate\Support\Facades\Crypt;
 
 /**
  * LibreNMS Device Backups Plugin Settings.
@@ -50,25 +51,58 @@ class PluginSettings {
      */
     public function __construct() {
         $this->plugin = PluginData::getPluginModel();
-        $settings = null;
+        $this->settings = (array) $this->plugin?->settings;
+    }
 
-        if (is_null($this->plugin)) {
-            $this->settings = [];
-            return;
+    public static function databaseSettings(array $settings): array {
+        $saved = $settings['database_connection'] ?? null;
+        if (is_array($saved)) {
+            return [
+                'database' => $saved['database'],
+                'host' => $saved['host'],
+                'port' => $saved['port'],
+                'username' => $saved['username'],
+                'password' => Crypt::decryptString($saved['encrypted_password']),
+            ];
         }
 
-        $settings = $this->plugin->settings;
+        return [
+            'database' => env('PLUGIN_DB_DATABASE', PLUGIN_DB_DATABASE),
+            'host' => env('PLUGIN_DB_HOST', PLUGIN_DB_HOST),
+            'port' => env('PLUGIN_DB_PORT', PLUGIN_DB_PORT),
+            'username' => env('PLUGIN_DB_USERNAME', PLUGIN_DB_USERNAME),
+            'password' => env('PLUGIN_DB_PASSWORD', PLUGIN_DB_PASSWORD),
+        ];
+    }
 
-        if (!is_array($settings)) {
-            $defaults = $this->getDefaults();
-
-            Log::info('Plugin settings to default', ['defaults' => $defaults]);
-            $this->settings = $defaults;
-            $this->plugin->settings = $this->settings;
-            $this->plugin->save();
-        } else {
-            $this->settings = $settings;
+    public function saveConnections(array $database, array $sftp): bool {
+        if ($this->plugin === null) {
+            return false;
         }
+
+        return $this->plugin->getConnection()->transaction(function () use ($database, $sftp): bool {
+            $plugin = $this->plugin->newQuery()->lockForUpdate()->findOrFail($this->plugin->getKey());
+            $settings = (array) $plugin->settings;
+
+            $database['encrypted_password'] = Crypt::encryptString($database['password']);
+            unset($database['password'], $settings['password']);
+            $settings['database_connection'] = $database;
+
+            foreach (['sftpserver', 'sftpuser'] as $key) {
+                if (array_key_exists($key, $sftp)) {
+                    $settings[$key] = $sftp[$key];
+                }
+            }
+
+            $sftpPassword = $sftp['sftppassword'] ?? $settings['sftppassword'] ?? null;
+            if ($sftpPassword !== null) {
+                $settings['encrypted_sftp_password'] = Crypt::encryptString($sftpPassword);
+            }
+            unset($settings['sftppassword']);
+
+            $plugin->settings = $settings;
+            return $plugin->save();
+        });
     }
 
     /**
@@ -173,20 +207,4 @@ class PluginSettings {
         }
     }
 
-    /**
-     * Get the default plugin settings.
-     *
-     * @return array
-     *
-     * @since 0.0.1
-     */
-    private function getDefaults(): array {
-        $settings = [];
-        $settings['database'] = PLUGIN_DB_DATABASE;
-        $settings['host'] = PLUGIN_DB_HOST;
-        $settings['port'] = PLUGIN_DB_PORT;
-        $settings['username'] = PLUGIN_DB_USERNAME;
-        $settings['password'] = PLUGIN_DB_PASSWORD;
-        return $settings;
-    }
 }

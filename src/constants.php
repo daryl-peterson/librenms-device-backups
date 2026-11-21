@@ -21,7 +21,7 @@ const PLUGIN_PATH           = 'vendor/daryl-peterson/librenms-device-backups/';
 /**
  * Database connection constants.
  */
-const PLUGIN_DB_CONNECTION  = 'plugin_db';
+const PLUGIN_DB_CONNECTION  = 'device_backups';
 const PLUGIN_DB_HOST        = '127.0.0.1';
 const PLUGIN_DB_PORT        = '3306';
 const PLUGIN_DB_DATABASE    = 'librenms_plugin_db';

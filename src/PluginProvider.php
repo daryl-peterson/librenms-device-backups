@@ -75,7 +75,7 @@ class PluginProvider extends ServiceProvider {
      */
     public function register(): void {
         require_once __DIR__ . '/constants.php';
-        PluginDb::initConfig();
+        \Illuminate\Foundation\Http\Middleware\TrimStrings::except(['sftppassword']);
     }
 
 
@@ -88,10 +88,6 @@ class PluginProvider extends ServiceProvider {
         try {
 
             $pluginName = PLUGIN_NAME;
-
-            // Run the plugin database initialization and checks.
-            PluginDb::run();
-            $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
             /*
             * Compatibility view path.
@@ -113,6 +109,9 @@ class PluginProvider extends ServiceProvider {
             $pluginManager->publishHook($pluginName, MenuEntryHookInterface::class, Menu::class);
             $pluginManager->publishHook($pluginName, SinglePageHook::class, Page::class);
             $pluginManager->publishHook($pluginName, SettingsHookInterface::class, Settings::class);
+
+            PluginDb::initConfig();
+            PluginDb::run();
 
             if ($this->app->runningInConsole()) {
                 $this->commands([

@@ -17,7 +17,12 @@ namespace DRP\DeviceBackups\Controllers;
  * Laravel imports.
  */
 
+use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 /**
@@ -26,6 +31,9 @@ use Illuminate\View\View;
 
 use DRP\DeviceBackups\TraitHidePrivates;
 use DRP\DeviceBackups\PluginData;
+use DRP\DeviceBackups\PluginDb;
+use DRP\DeviceBackups\PluginSettings;
+use PDOException;
 use DRP\DeviceBackups\TraitValidateAdmin;
 use const DRP\DeviceBackups\PLUGIN_NAME;
 
@@ -72,6 +80,96 @@ class PluginController extends Controller {
     public function settings(): View {
         $this->validateAdmin();
 
-        return view("$this->plugin::settings", ['info' => $this->info, 'plugin' => $this->plugin]);
+        $database = PluginSettings::databaseSettings($this->info['settings']);
+        unset($database['password']);
+
+        return view("$this->plugin::settings", [
+            'info' => $this->info,
+            'plugin' => $this->plugin,
+            'database' => $database,
+        ]);
+    }
+
+    public function testConnection(Request $request): JsonResponse|RedirectResponse {
+        return $this->handleSettings($request, false);
+    }
+
+    public function saveSettings(Request $request): RedirectResponse {
+        return $this->handleSettings($request, true);
+    }
+
+    private function handleSettings(Request $request, bool $save): JsonResponse|RedirectResponse {
+        $this->validateAdmin();
+
+        $rules = [
+            'host' => ['required', 'string', 'max:255', 'regex:/\A[a-zA-Z0-9_.:-]+\z/'],
+            'port' => ['required', 'integer', 'between:1,65535'],
+            'database' => ['required', 'string', 'max:64', 'not_regex:/[;\x00-\x1f\x7f]/'],
+            'username' => ['required', 'string'],
+            'password' => ['nullable', 'string'],
+        ];
+        if ($save) {
+            $rules += [
+                'sftpserver' => ['nullable', 'string', 'max:255'],
+                'sftpuser' => ['nullable', 'string', 'max:255'],
+                'sftppassword' => ['nullable', 'string'],
+            ];
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+        if ($validator->fails()) {
+            return $this->settingsResponse($request, $save, 'error', $validator->errors()->first());
+        }
+
+        $validated = $validator->validated();
+        $database = array_intersect_key($validated, array_flip(['database', 'host', 'port', 'username', 'password']));
+        $database['password'] ??= PluginSettings::databaseSettings($this->info['settings'])['password'];
+
+        try {
+            PluginDb::testConnection($database);
+        } catch (PDOException $e) {
+            $message = match ((int) ($e->errorInfo[1] ?? 0)) {
+                1045 => 'The database rejected the username or password.',
+                1044 => 'The database user does not have access to the selected database.',
+                1049 => 'The selected database does not exist.',
+                2002, 2003, 2005 => 'Could not reach the database server. Check the host, port, and network access.',
+                default => 'Could not connect to the backup database with the supplied settings.',
+            };
+
+            return $this->settingsResponse($request, $save, 'error', $message);
+        }
+
+        if (!$save) {
+            return $this->settingsResponse($request, false, 'success', 'Connected to the backup database successfully.');
+        }
+
+        $sftp = array_intersect_key($validated, array_flip(['sftpserver', 'sftpuser', 'sftppassword']));
+        try {
+            $saved = (new PluginSettings())->saveConnections($database, $sftp);
+        } catch (QueryException) {
+            $saved = false;
+        }
+
+        if (!$saved) {
+            return $this->settingsResponse($request, true, 'error', 'Could not save the Device Backups settings.');
+        }
+
+        PluginDb::clearConnectionChecks();
+
+        return $this->settingsResponse($request, true, 'success', 'Settings saved. Device Backups will use this database connection.');
+    }
+
+    private function settingsResponse(Request $request, bool $save, string $status, string $message): JsonResponse|RedirectResponse {
+        if (!$save && $request->expectsJson()) {
+            return response()->json(['message' => $message], $status === 'success' ? 200 : 422);
+        }
+
+        $redirect = redirect()->route("$this->plugin.settings")->with($status, $message);
+        if (!$save || $status === 'error') {
+            $fields = ['database', 'host', 'port', 'username', 'sftpserver', 'sftpuser'];
+            $redirect->withInput(array_filter($request->only($fields), 'is_scalar'));
+        }
+
+        return $redirect;
     }
 }
