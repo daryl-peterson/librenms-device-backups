@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Route;
  * Plugin imports.
  */
 
+use DRP\DeviceBackups\Controllers\BackupController;
+use DRP\DeviceBackups\Controllers\BackupScheduleController;
 use DRP\DeviceBackups\Controllers\PluginController;
 use DRP\DeviceBackups\Controllers\ActionController;
 use const DRP\DeviceBackups\PLUGIN_NAME;
@@ -52,8 +54,23 @@ Route::middleware(['web', 'auth'])
     ->name("$plugin.test-connection");
 
 Route::middleware(['web', 'auth'])
+    ->post("plugin/settings/$plugin/test-sftp", [PluginController::class, 'testSftp'])
+    ->name("$plugin.test-sftp");
+
+Route::middleware(['web', 'auth'])
     ->post("plugin/settings/$plugin/save", [PluginController::class, 'saveSettings'])
     ->name("$plugin.save-settings");
+
+Route::middleware(['web', 'auth'])->prefix("plugin/$plugin/backups")->name("$plugin.backups.")->group(function (): void {
+    Route::get('/', [BackupController::class, 'status'])->name('status');
+    Route::get('/devices', [BackupController::class, 'devices'])->name('devices');
+    Route::get('/schedule', [BackupScheduleController::class, 'edit'])->name('schedule');
+    Route::post('/schedule', [BackupScheduleController::class, 'update'])->name('schedule.update');
+    Route::get('/devices/{device}', [BackupController::class, 'history'])->whereNumber('device')->name('history');
+    Route::get('/devices/{device}/latest', [BackupController::class, 'latest'])->whereNumber('device')->name('latest');
+    Route::get('/devices/{device}/download/{backup}', [BackupController::class, 'download'])
+        ->whereNumber(['device', 'backup'])->name('download');
+});
 
 /**
  * Action route

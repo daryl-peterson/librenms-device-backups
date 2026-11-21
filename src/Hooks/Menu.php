@@ -13,6 +13,8 @@
 
 namespace DRP\DeviceBackups\Hooks;
 
+use App\Models\User;
+use Illuminate\Contracts\Auth\Authenticatable;
 use App\Plugins\Hooks\MenuEntryHook;
 use DRP\DeviceBackups\PluginData;
 
@@ -27,6 +29,9 @@ use DRP\DeviceBackups\PluginData;
  * @since       0.0.1
  */
 class Menu extends MenuEntryHook {
+    public function authorize(?Authenticatable $user): bool {
+        return $user instanceof User && $user->hasRole('admin');
+    }
 
     // override the data function to add additional data to be accessed in the view
     // inside the blade, all variables will be named based on the key in the returned array

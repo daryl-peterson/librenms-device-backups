@@ -17,6 +17,7 @@ namespace DRP\DeviceBackups\Controllers;
  * Laravel imports.
  */
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -29,11 +30,15 @@ use Illuminate\View\View;
  * Plugin imports.
  */
 
+use DRP\DeviceBackups\Backup\BackupFailure;
+use DRP\DeviceBackups\Backup\SshConnection;
 use DRP\DeviceBackups\TraitHidePrivates;
 use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\PluginDb;
 use DRP\DeviceBackups\PluginSettings;
 use PDOException;
+use phpseclib4\Exception\BaseException as SftpException;
+use phpseclib4\Net\SFTP;
 use DRP\DeviceBackups\TraitValidateAdmin;
 use const DRP\DeviceBackups\PLUGIN_NAME;
 
@@ -94,6 +99,65 @@ class PluginController extends Controller {
         return $this->handleSettings($request, false);
     }
 
+    public function testSftp(Request $request): JsonResponse|RedirectResponse {
+        $this->validateAdmin();
+
+        $validator = Validator::make($request->all(), $this->sftpRules(true), [], [
+            'sftpserver' => 'SFTP server',
+            'sftpport' => 'SFTP port',
+            'sftpuser' => 'SFTP user',
+            'sftppassword' => 'SFTP password',
+            'sftpfingerprint' => 'SFTP host key fingerprint',
+        ]);
+        if ($validator->fails()) {
+            return $this->settingsResponse($request, false, 'error', $validator->errors()->first());
+        }
+
+        $input = $validator->validated();
+        try {
+            $sftp = new SFTP(SshConnection::host($input['sftpserver']), (int) ($input['sftpport'] ?? 22), 5);
+            $fingerprint = SshConnection::fingerprint($sftp);
+            $expected = $input['sftpfingerprint'] ?? null;
+            if ($expected === null) {
+                return $this->settingsResponse($request, false, 'error',
+                    "The server presented $fingerprint. Verify it with your SFTP administrator, then enter it in Host Key Fingerprint and test again.");
+            }
+            if (!hash_equals($expected, $fingerprint)) {
+                return $this->settingsResponse($request, false, 'error', 'The SFTP host key does not match the entered fingerprint.');
+            }
+
+            $password = $input['sftppassword'] ?? PluginSettings::sftpPassword(PluginData::getSettings());
+            if ($password === null || $password === '') {
+                return $this->settingsResponse($request, false, 'error', 'Enter the SFTP password.');
+            }
+            if (!$sftp->login($input['sftpuser'], $password)) {
+                return $this->settingsResponse($request, false, 'error', 'The SFTP server rejected the username or password.');
+            }
+
+            $sftp->pwd();
+
+            return $this->settingsResponse($request, false, 'success', 'Connected to the SFTP server successfully.');
+        } catch (DecryptException) {
+            return $this->settingsResponse($request, false, 'error', 'The saved SFTP password could not be read. Enter the password and test again.');
+        } catch (BackupFailure $e) {
+            return $this->settingsResponse($request, false, 'error', $e->getMessage());
+        } catch (SftpException) {
+            return $this->settingsResponse($request, false, 'error', 'Could not complete the SFTP connection. Check the server, port, and SFTP access.');
+        }
+    }
+
+    private function sftpRules(bool $testing): array {
+        $presence = $testing ? 'required' : 'nullable';
+
+        return [
+            'sftpserver' => [$presence, 'string', 'max:255', 'regex:/\A[a-zA-Z0-9_.:-]+\z/'],
+            'sftpport' => ['nullable', 'integer', 'between:1,65535'],
+            'sftpuser' => [$presence, 'string', 'max:255'],
+            'sftppassword' => ['nullable', 'string'],
+            'sftpfingerprint' => ['nullable', 'string', 'regex:/\ASHA256:[a-zA-Z0-9+\/]{43}\z/'],
+        ];
+    }
+
     public function saveSettings(Request $request): RedirectResponse {
         return $this->handleSettings($request, true);
     }
@@ -109,11 +173,7 @@ class PluginController extends Controller {
             'password' => ['nullable', 'string'],
         ];
         if ($save) {
-            $rules += [
-                'sftpserver' => ['nullable', 'string', 'max:255'],
-                'sftpuser' => ['nullable', 'string', 'max:255'],
-                'sftppassword' => ['nullable', 'string'],
-            ];
+            $rules += $this->sftpRules(false) + ['backup_report_email' => ['nullable', 'email', 'max:254']];
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -143,9 +203,9 @@ class PluginController extends Controller {
             return $this->settingsResponse($request, false, 'success', 'Connected to the backup database successfully.');
         }
 
-        $sftp = array_intersect_key($validated, array_flip(['sftpserver', 'sftpuser', 'sftppassword']));
+        $formSettings = array_diff_key($validated, $database);
         try {
-            $saved = (new PluginSettings())->saveConnections($database, $sftp);
+            $saved = (new PluginSettings())->saveConnections($database, $formSettings);
         } catch (QueryException) {
             $saved = false;
         }
@@ -166,7 +226,7 @@ class PluginController extends Controller {
 
         $redirect = redirect()->route("$this->plugin.settings")->with($status, $message);
         if (!$save || $status === 'error') {
-            $fields = ['database', 'host', 'port', 'username', 'sftpserver', 'sftpuser'];
+            $fields = ['database', 'host', 'port', 'username', 'sftpserver', 'sftpport', 'sftpuser', 'sftpfingerprint', 'backup_report_email'];
             $redirect->withInput(array_filter($request->only($fields), 'is_scalar'));
         }
 

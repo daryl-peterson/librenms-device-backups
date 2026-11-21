@@ -1,40 +1,33 @@
 @php
-    $currentRouteName = request()->route()->getName();
+    $pluginName = \DRP\DeviceBackups\PLUGIN_NAME;
+    $links = [['Plugin', route('plugin.page', ['plugin' => $pluginName]), ['plugin.page']]];
+
+    if (auth()->user()?->hasRole('admin')) {
+        $links = array_merge($links, [
+            ['Status', route('device-backups.backups.status'), ['device-backups.backups.status']],
+            [
+                'By Device',
+                route('device-backups.backups.devices'),
+                ['device-backups.backups.devices', 'device-backups.backups.history'],
+            ],
+            ['Schedule', route('device-backups.backups.schedule'), ['device-backups.backups.schedule']],
+            ['Settings', route('device-backups.settings'), ['device-backups.settings']],
+        ]);
+    }
 @endphp
 
-
-<div class="tw:flex tw:justify-between">
-    <div class="tw:min-h-8">
-        <div class="tw:inline-block tw:p-1">
-            <div class="tw:inline-block tw:p-1" style="border-bottom: 0">
-                <span style="font-weight: bold">{{ $info['title'] }}</span> »
-
-                @if ($currentRouteName === 'plugin.page')
-                    <span class="pagemenu-selected" style="margin-right: 4px">
-                @endif
-
-                @if ($currentRouteName !== 'plugin.page')
-                    <span>
-                @endif
-
-                <a href="{{ route('plugin.page', $plugin) }}" class="sync-filter-url">Plugin</a>
-                </span>
-
-                @can('access-admin')
-                    |
-
-                    @if ($currentRouteName === "$plugin.settings")
-                        <span class="pagemenu-selected" style="margin-right: 4px">
-                    @endif
-
-                    @if ($currentRouteName !== "$plugin.settings")
-                        <span>
-                    @endif
-
-                    <a href="{{ route("$plugin.settings") }}" class="sync-filter-url">Settings</a>
-                    </span>
-                @endcan
-            </div>
-        </div>
+<nav class="tw:flex tw:justify-between" aria-label="Device Backups">
+    <div class="tw:min-h-8 tw:p-2">
+        <strong style="font-size: 1.1em;">{{ \DRP\DeviceBackups\PLUGIN_TITLE }}</strong> »
+        @foreach ($links as [$label, $url, $routes])
+            @if (!$loop->first)
+                <span aria-hidden="true"> | </span>
+            @endif
+            @php($selected = request()->routeIs(...$routes))
+            <span @class(['pagemenu-selected' => $selected])>
+                <a href="{{ $url }}" class="sync-filter-url"
+                    @if ($selected) aria-current="page" @endif>{{ $label }}</a>
+            </span>
+        @endforeach
     </div>
-</div>
+</nav>

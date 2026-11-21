@@ -27,18 +27,21 @@ use Throwable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\ServiceProvider;
+use LibreNMS\Interfaces\Plugins\Hooks\DeviceOverviewHook;
 use LibreNMS\Interfaces\Plugins\Hooks\MenuEntryHook as MenuEntryHookInterface;
 use LibreNMS\Interfaces\Plugins\Hooks\SettingsHook as SettingsHookInterface;
 use LibreNMS\Interfaces\Plugins\Hooks\SinglePageHook;
 use LibreNMS\Interfaces\Plugins\PluginManagerInterface;
-use LibreNMS\Plugins;
 
 /**
  * Plugin imports.
  */
 
-use DRP\DeviceBackups\Console\CacheClear;
-use DRP\DeviceBackups\Console\CheckMigrationsCommand;
+use DRP\DeviceBackups\Backup\BackupSchedule;
+use DRP\DeviceBackups\Console\ConfigureBackup;
+use DRP\DeviceBackups\Console\ExportBackup;
+use DRP\DeviceBackups\Console\RunBackups;
+use DRP\DeviceBackups\Hooks\DeviceOverview;
 use DRP\DeviceBackups\Hooks\Menu;
 use DRP\DeviceBackups\Hooks\Page;
 use DRP\DeviceBackups\Hooks\Settings;
@@ -75,6 +78,7 @@ class PluginProvider extends ServiceProvider {
      */
     public function register(): void {
         require_once __DIR__ . '/constants.php';
+        $this->mergeConfigFrom(dirname(__DIR__) . '/config/device-backups.php', 'device-backups');
         \Illuminate\Foundation\Http\Middleware\TrimStrings::except(['sftppassword']);
     }
 
@@ -110,31 +114,26 @@ class PluginProvider extends ServiceProvider {
             $pluginManager->publishHook($pluginName, SinglePageHook::class, Page::class);
             $pluginManager->publishHook($pluginName, SettingsHookInterface::class, Settings::class);
 
+            $pluginManager->publishHook($pluginName, DeviceOverviewHook::class, DeviceOverview::class);
+
             PluginDb::initConfig();
-            PluginDb::run();
+            PluginDb::checkConnection();
 
             if ($this->app->runningInConsole()) {
-                $this->commands([
-                    //ProcessPluginQueue::class,
-                    //CheckMigrationsCommand::class,
-                    //CacheClear::class,
-                ]);
+                $this->commands([ConfigureBackup::class, ExportBackup::class, RunBackups::class]);
+
+                if ($pluginManager->pluginEnabled($pluginName)) {
+                    $this->app->booted(function () {
+                        $schedule = BackupSchedule::fromSettings(PluginData::getSettings());
+                        if ($schedule->enabled) {
+                            $this->app->make(Schedule::class)
+                                ->command('device-backups:run')
+                                ->cron($schedule->expression())
+                                ->timezone($schedule->timezone);
+                        }
+                    });
+                }
             }
-
-
-            // Wait until LibreNMS completely boots up
-            $isServiceActive = Helper::isServiceActive();
-            if ($isServiceActive) {
-                $this->app->booted(function () {
-                    $schedule = $this->app->make(Schedule::class);
-
-                    // Trigger your scheduled task safely
-                    $schedule
-                        ->command('device-backups:process-plugin-queue')
-                        ->everyTwoMinutes();
-                });
-            }
-
 
             $this->clearCacheOnFirstRun();
         } catch (Throwable $th) {

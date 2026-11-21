@@ -2,22 +2,10 @@
 <div style="margin-top:-12px; padding-bottom: 1em;">
     @includeIf("$plugin::layouts.flash-messages")
 </div>
-<div class="container-fluid">
-    <div class="col-sm-12 col-lg-6">
-        <div class="panel panel-default">
-            <div class="panel-heading">
-                @includeIf("$plugin::partials.breadcrumb")
-
-            </div>
-            <div class="panel-body">
-                @includeIf("$plugin::partials.author")
-
-                @includeIf("$plugin::partials.dbstatus")
-
-            </div>
-        </div>
-    </div>
-</div>
+@component('device-backups::layouts.panel')
+    @includeIf("$plugin::partials.author")
+    @includeIf("$plugin::partials.dbstatus")
+@endcomponent
 
 
 @push('scripts')

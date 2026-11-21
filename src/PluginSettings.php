@@ -15,6 +15,8 @@ namespace DRP\DeviceBackups;
 
 use Throwable;
 use App\Models\Plugin;
+use Closure;
+use DRP\DeviceBackups\Backup\BackupSchedule;
 use DRP\DeviceBackups\Log;
 use Illuminate\Support\Facades\Crypt;
 
@@ -75,32 +77,57 @@ class PluginSettings {
         ];
     }
 
-    public function saveConnections(array $database, array $sftp): bool {
-        if ($this->plugin === null) {
-            return false;
-        }
+    public static function sftpPassword(array $settings): ?string {
+        return isset($settings['encrypted_sftp_password'])
+            ? Crypt::decryptString($settings['encrypted_sftp_password'])
+            : ($settings['sftppassword'] ?? null);
+    }
 
-        return $this->plugin->getConnection()->transaction(function () use ($database, $sftp): bool {
-            $plugin = $this->plugin->newQuery()->lockForUpdate()->findOrFail($this->plugin->getKey());
-            $settings = (array) $plugin->settings;
+    public function saveConnections(array $database, array $formSettings): bool {
+        return $this->updateSettings(function (array $settings) use ($database, $formSettings): array {
 
             $database['encrypted_password'] = Crypt::encryptString($database['password']);
             unset($database['password'], $settings['password']);
             $settings['database_connection'] = $database;
 
-            foreach (['sftpserver', 'sftpuser'] as $key) {
-                if (array_key_exists($key, $sftp)) {
-                    $settings[$key] = $sftp[$key];
+            foreach (['sftpserver', 'sftpport', 'sftpuser', 'sftpfingerprint', 'backup_report_email'] as $key) {
+                if (array_key_exists($key, $formSettings)) {
+                    $settings[$key] = $formSettings[$key];
                 }
             }
 
-            $sftpPassword = $sftp['sftppassword'] ?? $settings['sftppassword'] ?? null;
+            $sftpPassword = $formSettings['sftppassword'] ?? $settings['sftppassword'] ?? null;
             if ($sftpPassword !== null) {
                 $settings['encrypted_sftp_password'] = Crypt::encryptString($sftpPassword);
             }
             unset($settings['sftppassword']);
 
-            $plugin->settings = $settings;
+            return $settings;
+        });
+    }
+
+    public function saveSchedule(BackupSchedule $schedule): bool {
+        return $this->updateSettings(static function (array $settings) use ($schedule): array {
+            $settings[BackupSchedule::SETTINGS_KEY] = [
+                'enabled' => $schedule->enabled,
+                'days' => $schedule->days,
+                'time' => $schedule->time,
+                'timezone' => $schedule->timezone,
+            ];
+
+            return $settings;
+        });
+    }
+
+    private function updateSettings(Closure $update): bool {
+        if ($this->plugin === null) {
+            return false;
+        }
+
+        return $this->plugin->getConnection()->transaction(function () use ($update): bool {
+            $plugin = $this->plugin->newQuery()->lockForUpdate()->findOrFail($this->plugin->getKey());
+            $plugin->settings = $update((array) $plugin->settings);
+
             return $plugin->save();
         });
     }
