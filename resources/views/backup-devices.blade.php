@@ -32,7 +32,10 @@
                             <td>{{ $device->disabled ? 'Disabled device' : ($device->backup_enrolled ? 'Enrolled' : 'Not enrolled') }}</td>
                             <td>@include('device-backups::partials.backup-status-badge', ['state' => $attempt?->status])</td>
                             <td>{{ $attempt?->run_started_at ?? '—' }}</td>
-                            <td><a href="{{ route('device-backups.backups.history', ['device' => $device->getKey()]) }}">View Backups</a>
+                            <td>
+                                <a href="{{ route('device-backups.backups.history', ['device' => $device->getKey()]) }}">View Backups</a>
+                                <span aria-hidden="true"> · </span>
+                                <a href="{{ route('device-backups.backups.ssh.edit', ['device' => $device->getKey()]) }}">SSH Settings</a>
                             </td>
                         </tr>
                     @empty

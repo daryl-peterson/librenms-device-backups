@@ -12,5 +12,6 @@
         @unless ($unavailable)
             <a class="btn btn-default btn-sm" href="{{ route('device-backups.backups.history', ['device' => $device->getKey()]) }}">View Backup History</a>
         @endunless
+        <a class="btn btn-default btn-sm" href="{{ route('device-backups.backups.ssh.edit', ['device' => $device->getKey()]) }}">SSH Settings</a>
     </div>
 </div>

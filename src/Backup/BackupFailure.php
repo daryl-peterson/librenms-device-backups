@@ -2,4 +2,4 @@
 
 namespace DRP\DeviceBackups\Backup;
 
-final class BackupFailure extends \RuntimeException {}
+class BackupFailure extends \RuntimeException {}

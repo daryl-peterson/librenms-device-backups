@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 
 use DRP\DeviceBackups\Controllers\BackupController;
 use DRP\DeviceBackups\Controllers\BackupScheduleController;
+use DRP\DeviceBackups\Controllers\DeviceSshController;
 use DRP\DeviceBackups\Controllers\PluginController;
 use DRP\DeviceBackups\Controllers\ActionController;
 use const DRP\DeviceBackups\PLUGIN_NAME;
@@ -66,6 +67,12 @@ Route::middleware(['web', 'auth'])->prefix("plugin/$plugin/backups")->name("$plu
     Route::get('/devices', [BackupController::class, 'devices'])->name('devices');
     Route::get('/schedule', [BackupScheduleController::class, 'edit'])->name('schedule');
     Route::post('/schedule', [BackupScheduleController::class, 'update'])->name('schedule.update');
+    Route::get('/ssh', [DeviceSshController::class, 'index'])->name('ssh.index');
+    Route::get('/ssh/{device}', [DeviceSshController::class, 'edit'])->whereNumber('device')->name('ssh.edit');
+    Route::post('/ssh/{device}', [DeviceSshController::class, 'update'])->whereNumber('device')->name('ssh.update');
+    Route::post('/ssh/{device}/check', [DeviceSshController::class, 'check'])->whereNumber('device')->name('ssh.check');
+    Route::post('/ssh/{device}/fingerprint', [DeviceSshController::class, 'fingerprint'])->whereNumber('device')->name('ssh.fingerprint');
+    Route::delete('/ssh/{device}', [DeviceSshController::class, 'remove'])->whereNumber('device')->name('ssh.remove');
     Route::get('/devices/{device}', [BackupController::class, 'history'])->whereNumber('device')->name('history');
     Route::get('/devices/{device}/latest', [BackupController::class, 'latest'])->whereNumber('device')->name('latest');
     Route::get('/devices/{device}/download/{backup}', [BackupController::class, 'download'])

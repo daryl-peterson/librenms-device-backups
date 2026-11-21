@@ -27,10 +27,10 @@ final class SshConnection {
 
     public static function login(SSH2 $connection, string $fingerprint, string $user, #[\SensitiveParameter] string $password): void {
         if (!self::validFingerprint($fingerprint) || !hash_equals($fingerprint, self::fingerprint($connection))) {
-            throw new BackupFailure('SSH host key did not match the configured fingerprint.');
+            throw new SshFailure('host_key_mismatch', 'SSH host key did not match the configured fingerprint.');
         }
         if (!$connection->login($user, $password)) {
-            throw new BackupFailure('SSH authentication failed.');
+            throw new SshFailure('authentication_failed', 'SSH authentication failed.');
         }
     }
 

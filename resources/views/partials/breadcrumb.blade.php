@@ -10,6 +10,7 @@
                 route('device-backups.backups.devices'),
                 ['device-backups.backups.devices', 'device-backups.backups.history'],
             ],
+            ['SSH Status', route('device-backups.backups.ssh.index'), ['device-backups.backups.ssh.*']],
             ['Schedule', route('device-backups.backups.schedule'), ['device-backups.backups.schedule']],
             ['Settings', route('device-backups.settings'), ['device-backups.settings']],
         ]);

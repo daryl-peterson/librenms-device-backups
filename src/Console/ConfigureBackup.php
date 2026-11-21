@@ -24,7 +24,7 @@ final class ConfigureBackup extends Command {
         }
 
         if ($this->option('disable')) {
-            if ($device->hasAttrib(Target::ATTRIBUTE) && !$device->forgetAttrib(Target::ATTRIBUTE)) {
+            if (!Target::remove($device)) {
                 $this->error('Could not remove the backup settings.');
                 return self::FAILURE;
             }

@@ -79,7 +79,7 @@ class PluginProvider extends ServiceProvider {
     public function register(): void {
         require_once __DIR__ . '/constants.php';
         $this->mergeConfigFrom(dirname(__DIR__) . '/config/device-backups.php', 'device-backups');
-        \Illuminate\Foundation\Http\Middleware\TrimStrings::except(['sftppassword']);
+        \Illuminate\Foundation\Http\Middleware\TrimStrings::except(['sftppassword', 'ssh_password', 'enable_password']);
     }
 
 

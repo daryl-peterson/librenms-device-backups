@@ -7,6 +7,7 @@ use DRP\DeviceBackups\Backup\Archives;
 use DRP\DeviceBackups\Backup\BackupFailure;
 use DRP\DeviceBackups\Backup\BackupStore;
 use DRP\DeviceBackups\Backup\Collector;
+use DRP\DeviceBackups\Backup\DeviceSshStatus;
 use DRP\DeviceBackups\Backup\SshConnection;
 use DRP\DeviceBackups\Backup\Target;
 use DRP\DeviceBackups\PluginData;
@@ -16,7 +17,6 @@ use Illuminate\Database\Eloquent\Builder;
 use phpseclib4\Exception\BaseException as SshException;
 use Illuminate\Support\Facades\Schema;
 use LibreNMS\Util\Mail;
-use phpseclib4\Net\SSH2;
 use Throwable;
 
 final class RunBackups extends Command {
@@ -57,7 +57,7 @@ final class RunBackups extends Command {
             ->with(['attribs' => fn ($query) => $query->where('attrib_type', Target::ATTRIBUTE)])
             ->when($id !== null, fn ($query) => $query->whereKey($id));
         if (!$targets->exists()) {
-            throw new BackupFailure('No enabled, enrolled devices matched. Use device-backups:configure to enroll a device.');
+            throw new BackupFailure('No enabled, enrolled devices matched. Enroll a device through Device Backups SSH Status or device-backups:configure.');
         }
 
         $password = config('device-backups.archive_password');
@@ -188,7 +188,7 @@ final class RunBackups extends Command {
             || !filter_var($settings['port'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]])) {
             throw new BackupFailure('Invalid device backup enrollment.');
         }
-        $settings['host'] = SshConnection::host($device->hostname);
+        SshConnection::host($device->hostname);
 
         return $settings;
     }
@@ -206,8 +206,7 @@ final class RunBackups extends Command {
                 ? 'running-config.txt'
                 : 'configuration-and-state.tar.gz';
             $stage = "$run/.$id-$member";
-            $ssh = new SSH2($settings['host'], (int) $settings['port'], 10);
-            SshConnection::login($ssh, $settings['fingerprint'], $settings['user'], $settings['password']);
+            $ssh = DeviceSshStatus::connect($device, $settings);
             Collector::capture($ssh, Target::promptName($device, $settings), $settings, $stage);
             unset($ssh);
 

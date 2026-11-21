@@ -19,6 +19,11 @@ Run this migration again after changing to a different backup database.
 
 ## Enroll and run
 
+In LibreNMS, open **Device Backups → SSH Status**, find a device, and choose **Configure SSH**. Enter the SSH account, port, profile, and verified host key fingerprint. **Read Host Key** shows the fingerprint presented by the device so you can compare it with a trusted source. Save the settings and use **Test SSH** to verify login. The SSH Status page shows the latest check from a manual test or backup run.
+
+You can also enroll a device from the CLI:
+
+
 ```bash
 ./lnms device-backups:configure DEVICE_ID
 ./lnms device-backups:run DEVICE_ID --check

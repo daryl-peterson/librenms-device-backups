@@ -10,6 +10,7 @@
             @endif
             @if ($device)
                 <a class="btn btn-default" href="{{ route('device.overview', ['device' => $deviceId]) }}">Device Overview</a>
+                <a class="btn btn-default" href="{{ route('device-backups.backups.ssh.edit', ['device' => $deviceId]) }}">SSH Settings</a>
             @endif
         </p>
         @include('device-backups::partials.backup-results', ['showDevice' => false])

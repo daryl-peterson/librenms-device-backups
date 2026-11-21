@@ -40,17 +40,9 @@ final class BackupController extends Controller {
         $store = $this->store();
         $search = $request->query('search');
         $search = is_string($search) ? mb_substr(trim($search), 0, 128) : '';
-        $inventory = Device::query()->withExists([
+        $inventory = Target::inventory($search)->withExists([
             'attribs as backup_enrolled' => fn ($query) => $query->where('attrib_type', Target::ATTRIBUTE),
-        ])->when($search !== '', function ($query) use ($search): void {
-            $query->where(function ($query) use ($search): void {
-                $query->whereLike('hostname', "%$search%")
-                    ->orWhereLike('sysName', "%$search%");
-                if (ctype_digit($search)) {
-                    $query->orWhere('device_id', $search);
-                }
-            });
-        })->orderBy('hostname')->orderBy('device_id')->simplePaginate(25)->withQueryString();
+        ])->simplePaginate(25)->withQueryString();
 
         try {
             return view('device-backups::backup-devices', [
