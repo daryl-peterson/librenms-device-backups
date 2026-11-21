@@ -1,7 +1,7 @@
 @php($pending = in_array($manualRequest?->status, ['queued', 'running'], true))
 @if ($canStartBackup && !$pending)
     <form method="POST" class="form-inline tw:inline-block"
-        action="{{ route('device-backups.backups.start', ['device' => $deviceId]) }}">
+        action="{{ route('device-backups.backups.start', ['device' => $deviceId] + ($returnQuery ?? [])) }}">
         @csrf
         <button type="submit" class="btn btn-primary btn-sm">Run Backup</button>
     </form>

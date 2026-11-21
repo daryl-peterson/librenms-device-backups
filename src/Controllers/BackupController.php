@@ -3,6 +3,7 @@
 namespace DRP\DeviceBackups\Controllers;
 
 use App\Models\Device;
+use Carbon\CarbonImmutable;
 use DRP\DeviceBackups\Backup\BackupFailure;
 use DRP\DeviceBackups\Backup\BackupStore;
 use DRP\DeviceBackups\Backup\ManualBackupRequests;
@@ -39,18 +40,19 @@ final class BackupController extends Controller {
         }
     }
 
-    public function devices(Request $request): View {
+    public function devices(Request $request, ManualBackupRequests $requests): View {
         $store = $this->store();
-        $search = $request->query('search');
-        $search = is_string($search) ? mb_substr(trim($search), 0, 128) : '';
+        $search = $this->deviceSearch($request->query('search'));
         $inventory = Target::inventory($search)->withExists([
             'attribs as backup_enrolled' => fn ($query) => $query->where('attrib_type', Target::ATTRIBUTE),
         ])->simplePaginate(25)->withQueryString();
 
         try {
+            $deviceIds = $inventory->getCollection()->modelKeys();
             return view('device-backups::backup-devices', [
                 'devices' => $inventory,
-                'attempts' => $store->latestAttempts($inventory->getCollection()->modelKeys()),
+                'attempts' => $store->latestAttempts($deviceIds),
+                'pendingRequests' => $requests->pendingFor($deviceIds),
                 'search' => $search,
             ]);
         } catch (QueryException) {
@@ -81,10 +83,16 @@ final class BackupController extends Controller {
         }
     }
 
-    public function start(Device $device, ManualBackupRequests $requests): RedirectResponse {
+    public function start(Request $request, Device $device, ManualBackupRequests $requests): RedirectResponse {
         $this->authorizePlugin();
         Gate::authorize('view', $device);
-        $redirect = redirect()->route('device-backups.backups.history', ['device' => $device->getKey()]);
+        $search = $this->deviceSearch($request->query('search'));
+        $redirect = $request->query('from') === 'devices'
+            ? redirect()->route('device-backups.backups.devices', [
+                'search' => $search !== '' ? $search : null,
+                'page' => filter_var($request->query('page'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 2]]) ?: null,
+            ])
+            : redirect()->route('device-backups.backups.history', ['device' => $device->getKey()]);
 
         $password = config('device-backups.archive_password');
         if (!is_string($password) || $password === '') {
@@ -124,11 +132,12 @@ final class BackupController extends Controller {
 
     private function sendArchive(int $device, ?int $backup = null): StreamedResponse {
         $store = $this->store();
-        $this->visibleDevice($device);
+        $model = $this->visibleDevice($device);
 
         try {
             $result = $store->findDownload($device, $backup);
             abort_unless($result, 404);
+            $filename = $this->archiveFilename($model, $result);
 
             $stream = tmpfile();
             abort_unless($stream, 503, 'Could not prepare the backup download.');
@@ -154,12 +163,34 @@ final class BackupController extends Controller {
             } finally {
                 fclose($stream);
             }
-        }, "device-$device-backup-{$result->id}.zip", [
+        }, $filename, [
             'Content-Type' => 'application/zip',
             'Content-Length' => (string) $result->archive_bytes,
             'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    private function archiveFilename(?Device $device, object $result): string {
+        $name = trim((string) $device?->sysName);
+        if ($name === '') {
+            $name = trim($result->hostname);
+        }
+        if (!filter_var($name, FILTER_VALIDATE_IP)) {
+            $name = explode('.', $name, 2)[0];
+        }
+
+        $name = trim(preg_replace('/[^A-Za-z0-9_.-]+/', '-', $name), '._-');
+        $name = $name !== '' ? $name : "device-{$result->device_id}";
+        $date = CarbonImmutable::parse($result->run_started_at, 'UTC')
+            ->setTimezone(config('app.timezone'))
+            ->format('YmdHs');
+
+        return "$name.$date.zip";
+    }
+
+    private function deviceSearch(mixed $value): string {
+        return is_string($value) ? mb_substr(trim($value), 0, 128) : '';
     }
 
     private function store(): BackupStore {

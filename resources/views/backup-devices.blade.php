@@ -3,6 +3,7 @@
 @section('content')
     @component('device-backups::layouts.panel', ['wide' => true])
         <div style="font-size: 1.1em; font-weight: 600; margin-bottom: .5em;">Backups by Device</div>
+        @include('device-backups::layouts.flash-messages')
         <form method="GET" action="{{ route('device-backups.backups.devices') }}" class="form-inline">
             <label for="backup-device-search" style="margin-left: .5em;">Find a Device</label>
             <input id="backup-device-search" name="search" class="form-control" value="{{ $search }}"
@@ -21,7 +22,7 @@
                         <th scope="col">Enrollment</th>
                         <th scope="col">Latest Attempt</th>
                         <th scope="col">Run started (UTC)</th>
-                        <th scope="col">History</th>
+                        <th scope="col">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,6 +37,12 @@
                                 <a href="{{ route('device-backups.backups.history', ['device' => $device->getKey()]) }}">View Backups</a>
                                 <span aria-hidden="true"> · </span>
                                 <a href="{{ route('device-backups.backups.ssh.edit', ['device' => $device->getKey()]) }}">SSH Settings</a>
+                                @include('device-backups::partials.run-backup', [
+                                    'deviceId' => $device->getKey(),
+                                    'canStartBackup' => !$device->disabled && $device->backup_enrolled,
+                                    'manualRequest' => $pendingRequests->get($device->getKey()),
+                                    'returnQuery' => ['from' => 'devices', 'search' => $search, 'page' => $devices->currentPage()],
+                                ])
                             </td>
                         </tr>
                     @empty

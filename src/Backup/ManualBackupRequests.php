@@ -4,6 +4,7 @@ namespace DRP\DeviceBackups\Backup;
 
 use DRP\DeviceBackups\PluginDb;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class ManualBackupRequests {
@@ -12,8 +13,18 @@ final class ManualBackupRequests {
     }
 
     public function pending(int $device): ?object {
-        return $this->runs()->where('requested_device_id', $device)->whereIn('status', ['queued', 'running'])
-            ->orderByDesc('id')->first();
+        return $this->pendingRuns()->where('requested_device_id', $device)->orderByDesc('id')->first();
+    }
+
+    public function pendingFor(array $devices): Collection {
+        $latest = $this->pendingRuns()->whereIn('requested_device_id', $devices)
+            ->selectRaw('max(id) as id')->groupBy('requested_device_id');
+
+        return $this->runs()->whereIn('id', $latest)->get()->keyBy('requested_device_id');
+    }
+
+    private function pendingRuns(): Builder {
+        return $this->runs()->whereIn('status', ['queued', 'running']);
     }
 
     /** Call while holding the LibreNMS device row lock. */
