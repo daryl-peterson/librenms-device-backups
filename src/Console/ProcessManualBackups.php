@@ -3,19 +3,44 @@
 namespace DRP\DeviceBackups\Console;
 
 use DRP\DeviceBackups\Backup\ManualBackupRequests;
+use DRP\DeviceBackups\Log;
+use DRP\DeviceBackups\PluginDb;
 use Illuminate\Console\Command;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Schema;
 
 final class ProcessManualBackups extends Command {
-    protected $signature = 'device-backups:process-requests';
+    private const MIGRATIONS_REQUIRED = 'The manual backup queue schema is missing. Run the Device Backups migrations on the device_backups connection.';
+
+    protected $signature = 'device-backups:process-requests
+        {--check : Check the manual backup queue schema without processing any requests}';
     protected $description = 'Run the next manually requested device backup';
 
     public function handle(ManualBackupRequests $requests): int {
         try {
+            if ($this->option('check')) {
+                if (!Schema::connection(PluginDb::getDbConnection())->hasColumns('device_backup_runs', [
+                    'requested_device_id', 'requested_at', 'request_error',
+                ])) {
+                    $this->error(self::MIGRATIONS_REQUIRED);
+                    return self::FAILURE;
+                }
+
+                $requests->next();
+                $this->info('The manual backup queue is readable.');
+                return self::SUCCESS;
+            }
+
             $requests->expireInterrupted();
             $next = $requests->next();
-        } catch (QueryException) {
-            $this->error('Could not read manual requests from the backup database.');
+        } catch (QueryException $exception) {
+            $state = (string) $exception->getCode();
+            $message = match ($state) {
+                '42S02', '42S22' => self::MIGRATIONS_REQUIRED,
+                default => "Could not access the manual backup queue (SQLSTATE $state). Check the backup database connection and permissions.",
+            };
+            $this->error($message);
+            Log::error($message);
             return self::FAILURE;
         }
 

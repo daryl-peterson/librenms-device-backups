@@ -4,8 +4,12 @@ namespace DRP\DeviceBackups\Tests\Database;
 
 use DRP\DeviceBackups\Backup\BackupStore;
 use DRP\DeviceBackups\Backup\ManualBackupRequests;
+use DRP\DeviceBackups\Console\ProcessManualBackups;
 use DRP\DeviceBackups\Tests\Support\DatabaseTestCase;
+use Illuminate\Console\OutputStyle;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 final class ManualBackupRequestsTest extends DatabaseTestCase {
     public function testPicksUpQueuedRequestsInOrderAndClaimsEachRequestOnce(): void {
@@ -59,5 +63,41 @@ final class ManualBackupRequestsTest extends DatabaseTestCase {
         self::assertNull($requests->pending(12));
         self::assertSame('running', $requests->latest(18)->status);
         self::assertSame('running', $store->findRun($scheduled)->status);
+    }
+
+    public function testQueueCheckDoesNotProcessOrExpireRequests(): void {
+        $requests = new ManualBackupRequests();
+        $running = $requests->enqueue(12);
+        $queued = $requests->enqueue(18);
+        self::assertTrue($requests->claim($running, 12));
+        DB::table('device_backup_runs')->where('id', $running)
+            ->update(['started_at' => now('UTC')->subHours(2)]);
+
+        [$status, $output] = $this->checkQueue($requests);
+
+        self::assertSame(ProcessManualBackups::SUCCESS, $status);
+        self::assertStringContainsString('The manual backup queue is readable.', $output);
+        self::assertSame('running', $requests->latest(12)->status);
+        self::assertTrue($requests->isQueued($queued, 18));
+    }
+
+    public function testQueueCheckReportsMissingManualRequestMigration(): void {
+        $migration = dirname(__DIR__, 2) . '/database/migrations/2026_11_21_000001_add_manual_requests_to_device_backup_runs.php';
+        (require $migration)->down();
+
+        [$status, $output] = $this->checkQueue(new ManualBackupRequests());
+
+        self::assertSame(ProcessManualBackups::FAILURE, $status);
+        self::assertStringContainsString('Run the Device Backups migrations', $output);
+    }
+
+    private function checkQueue(ManualBackupRequests $requests): array {
+        $command = new ProcessManualBackups();
+        $input = new ArrayInput(['--check' => true], $command->getDefinition());
+        $output = new BufferedOutput();
+        $command->setInput($input);
+        $command->setOutput(new OutputStyle($input, $output));
+
+        return [$command->handle($requests), $output->fetch()];
     }
 }

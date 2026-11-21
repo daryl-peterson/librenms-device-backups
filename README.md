@@ -32,7 +32,7 @@ During installation, Laravel's package discovery clears a route cache that is mi
      --path=vendor/daryl-peterson/librenms-device-backups/database/migrations --force
    ```
 
-4. Set **Backup Report Email** to receive results through LibreNMS's configured mail backend. The email lists successful and failed devices and includes backup IDs for successful captures.
+4. Optionally set **Backup Report Email** to receive results through LibreNMS's configured mail backend. The email lists successful and failed devices and includes backup IDs for successful captures.
 
 Settings also has a **Test SFTP** action for checking a configured SFTP destination. Backup archives are stored in the backup database.
 
@@ -61,10 +61,13 @@ An existing `DEVICE_BACKUPS_SCHEDULED=true` setting supplies the Friday 6 p.m. A
 ./lnms device-backups:configure DEVICE_ID
 ./lnms device-backups:run DEVICE_ID --check
 ./lnms device-backups:run DEVICE_ID
+./lnms device-backups:process-requests --check
 ./lnms schedule:list
 ```
 
 Use `--profile=PROFILE` with the configure command to select a server profile or override the detected device OS. Use `--disable` to remove enrollment. Omit the device ID from the run command to back up all enrolled, enabled devices.
+
+If the scheduler reports that `device-backups:process-requests` exited with code 1, check **Device Backups → Status** for a failed backup attempt. Run `./lnms device-backups:process-requests --check` to verify the queue schema and database read access without starting a backup.
 
 ## Supported profiles
 

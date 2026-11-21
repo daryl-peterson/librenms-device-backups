@@ -209,7 +209,7 @@ final class RunBackups extends Command {
         $store->finish($run, $failed, $emailStatus);
         $this->info("Run $run. Succeeded: $success. Failed: $failure. Email: $emailStatus.");
 
-        return $failed || $emailStatus !== 'sent' ? self::FAILURE : self::SUCCESS;
+        return $failed || $emailStatus === 'failed' ? self::FAILURE : self::SUCCESS;
     }
 
     private function deviceSettings(Device $device): array {
