@@ -1,71 +1,112 @@
 # Device Backups
 
-Device Backups reads the device ID, hostname, and detected OS from LibreNMS. Backups run only for enrolled, enabled devices. The enrollment command stores the SSH settings as an encrypted device attribute.
+Device Backups is a LibreNMS plugin for backing up network device configurations and selected server files over SSH. It uses the LibreNMS inventory and stores verified AES-256 ZIP archives in a separate backup database. LibreNMS admins can enroll devices, test SSH, queue backups, set a schedule, and download archives from the web interface.
 
-## Setup
+## License & Support
 
-In **Device Backups → Settings**, configure the separate backup database and save a **Backup Report Email** address. Reports use the LibreNMS email backend and sender. Each report lists successful and failed devices, and successful entries include a backup ID.
+This project is open-source under the [MIT License](LICENSE). If this plugin helps simplify your LibreNMS device backups, consider supporting future development via [GitHub Sponsors](https://github.com).
 
-Set `DEVICE_BACKUPS_ARCHIVE_PASSWORD` in LibreNMS's environment. Keep a copy needed for recovery with your other backup credentials. PHP CLI needs ZIP with AES-256 support, zlib, and Phar.
 
-From `/opt/librenms` as the LibreNMS service user, create the backup tables on the configured backup connection:
+## Install and configure
+
+Use PHP 8.4 or later with ZIP and AES-256 support, Phar, and zlib. Run the following commands from the LibreNMS installation directory as the LibreNMS service user.
+
+For a local checkout, register it as a Composer path repository and install the plugin. Replace the checkout path with your own.
 
 ```bash
-./lnms migrate --database=device_backups \
-  --path=vendor/daryl-peterson/librenms-device-backups/database/migrations --force
+cd /opt/librenms
+./scripts/composer_wrapper.php config --global repositories.librenms-device-backups \
+  '{"type":"path","url":"/absolute/path/to/librenms-device-backups","options":{"symlink":true}}'
+./lnms plugin:add daryl-peterson/librenms-device-backups dev-main
+./lnms plugin:enable device-backups
 ```
 
-Run this migration again after changing to a different backup database.
+1. Open **Device Backups → Settings** and enter the credentials for the separate MySQL or MariaDB database. Click **Test DB**, then **Save Settings**.
+2. Set `DEVICE_BACKUPS_ARCHIVE_PASSWORD` in LibreNMS's environment. Keep it with your recovery credentials. If you change it later, older ZIPs still need their original password.
+3. Run the plugin migrations against the configured backup database. Repeat this step when an update adds a migration or when moving to a different backup database.
 
-## Enroll and run
+   ```bash
+   ./lnms migrate --database=device_backups \
+     --path=vendor/daryl-peterson/librenms-device-backups/database/migrations --force
+   ```
 
-In LibreNMS, open **Device Backups → SSH Status**, find a device, and choose **Configure SSH**. Enter the SSH account, port, profile, and verified host key fingerprint. **Read Host Key** shows the fingerprint presented by the device so you can compare it with a trusted source. Save the settings and use **Test SSH** to verify login. The SSH Status page shows the latest check from a manual test or backup run.
+4. Set **Backup Report Email** to receive results through LibreNMS's configured mail backend. The email lists successful and failed devices and includes backup IDs for successful captures.
 
-You can also enroll a device from the CLI:
+Settings also has a **Test SFTP** action for checking a configured SFTP destination. Backup archives are stored in the backup database.
 
+## Enroll a device and check SSH
+
+Open **Device Backups → SSH Status**, find the device, and click **Configure SSH** or **Edit SSH**. The device overview also links to **SSH Settings**.
+
+1. Choose a backup profile and enter the username, password, and port for the device's existing SSH account.
+2. Enter the verified SHA256 host key fingerprint. **Read Host Key** shows the fingerprint the device presents. Compare it with the device console or another trusted source before saving it.
+3. For switch profiles that require a CLI hostname, enter the name shown in the device prompt. Supply an enable password if the SSH account needs it to read the configuration. EdgeSwitch detects its CLI prompt automatically.
+4. Click **Save SSH Settings**, then **Test Saved SSH Settings**. The SSH Status page shows the last result and check time for each device. Manual tests and backup runs both update it.
+
+The plugin encrypts the saved SSH credentials. When editing an enrolled device, leave the password field blank to keep the saved password. **Remove Enrollment** stops future backups and keeps the device's stored archives.
+
+## Run and monitor backups
+
+- **Run one device.** Click **Run Backup** on the device overview, in its backup history, or on **By Device**. The LibreNMS scheduler checks queued requests each minute, including when recurring backups are paused.
+- **Run on a schedule.** Open **Device Backups → Schedule**, select the days, time, and time zone, enable scheduled backups, and click **Save Schedule**. The page shows the next run. The schedule applies to all enrolled, enabled devices.
+- **Check results.** **Status** shows backup runs, success and failure counts, and report email status. Filter backup attempts by run or result. **By Device** shows each device's latest attempt and links to its history.
+
+An existing `DEVICE_BACKUPS_SCHEDULED=true` setting supplies the Friday 6 p.m. America/Chicago schedule until you save a schedule in the web interface.
+
+### CLI commands
 
 ```bash
 ./lnms device-backups:configure DEVICE_ID
 ./lnms device-backups:run DEVICE_ID --check
 ./lnms device-backups:run DEVICE_ID
+./lnms schedule:list
 ```
 
-Enter the SSH username and password, port, and independently verified SHA256 host key fingerprint at the prompts. For switches, confirm the CLI hostname and enter the enable password if required. Use `--profile=PROFILE` to override the detected OS or select a server profile:
+Use `--profile=PROFILE` with the configure command to select a server profile or override the detected device OS. Use `--disable` to remove enrollment. Omit the device ID from the run command to back up all enrolled, enabled devices.
 
-| Platform | Profiles |
-| --- | --- |
-| Switches and firewalls | `dell`, `ios`, `nxos`, `asa`, `timos`, `edgeswitch` |
-| Ubiquiti EdgeRouter and radios | `edgeos`, `airos`, `airfiber` |
-| DHCP, DNS, and Kea | `dhcp`, `dns`, `dhcp-dns`, `dhcp-dns-old`, `dns-old`, `kea` |
-| Hosts with restricted export helpers | `dhcp-helper`, `kea-helper` |
+## Supported profiles
 
-EdgeRouter (`edgeos`) reads the saved startup configuration `/config/config.boot`. EdgeSwitch (`edgeswitch`) reads the running configuration and detects its CLI prompt automatically. airOS (`airos`) and classic airFiber (`airfiber`, with an `AF…#` SSH prompt) read `/tmp/system.cfg`. UniFi controller backups, airFiber 60, and LTU use different profiles or backup workflows and are outside this support. [EdgeRouter configuration files](https://help.uisp.com/hc/en-us/articles/22591188157079-EdgeRouter-Archiving-and-Managing-the-Configuration-Files) · [EdgeSwitch CLI reference](https://dl.ui.com/guides/edgemax/EdgeSwitch_CLI_Command_Reference_UG.pdf) · [airOS and airFiber collectors](https://github.com/ytti/oxidized/tree/master/lib/oxidized/model) · [UniFi backups](https://help.ui.com/hc/en-us/articles/360008976393-Backups-and-Migration-in-UniFi)
+| Platform                                        | Profiles                                                    | Backup contents                                                                      |
+| ----------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Dell, Cisco IOS/IOS XE, NX-OS, ASA, Nokia TiMOS | `dell`, `ios`, `nxos`, `asa`, `timos`                       | Running configuration as `running-config.txt`                                        |
+| Ubiquiti EdgeSwitch                             | `edgeswitch`                                                | Running configuration as `running-config.txt`                                        |
+| Ubiquiti EdgeRouter                             | `edgeos`                                                    | Saved startup configuration from `/config/config.boot`                               |
+| Ubiquiti airOS and classic airFiber             | `airos`, `airfiber`                                         | Configuration from `/tmp/system.cfg`                                                 |
+| ISC DHCP, BIND DNS, and Kea                     | `dhcp`, `dns`, `dhcp-dns`, `dhcp-dns-old`, `dns-old`, `kea` | Service configuration and applicable lease files in `configuration-and-state.tar.gz` |
+| Restricted DHCP and Kea helpers                 | `dhcp-helper`, `kea-helper`                                 | Validated archive produced by the server helper                                      |
 
-Standard server profiles require an SSH account that can read the selected files. Helper profiles call the existing `/usr/local/sbin/netmonitor-dhcp-backup` or `/usr/local/sbin/netmonitor-kea-backup` via noninteractive sudo. Telnet and the deployment-specific SMx export are outside these profiles.
+Direct server profiles require an SSH account that can read the selected files. The helper profiles call the existing `/usr/local/sbin/netmonitor-dhcp-backup` or `/usr/local/sbin/netmonitor-kea-backup` with noninteractive sudo.
 
-To start a single-device backup from LibreNMS, click **Run Backup** on the device overview, its backup history, or the **Backups by Device** list. LibreNMS processes requests through its existing scheduler, including when recurring backups are paused. A queued or running request appears in the device history and on the Status page.
+Classic airFiber support covers the `AF…#` SSH prompt. UniFi controller backups, airFiber 60, LTU, Telnet, and the deployment-specific SMx export are outside the current profiles. [EdgeRouter configuration files](https://help.uisp.com/hc/en-us/articles/22591188157079-EdgeRouter-Archiving-and-Managing-the-Configuration-Files) · [EdgeSwitch CLI reference](https://dl.ui.com/guides/edgemax/EdgeSwitch_CLI_Command_Reference_UG.pdf) · [airOS and airFiber collectors](https://github.com/ytti/oxidized/tree/master/lib/oxidized/model) · [UniFi backups](https://help.ui.com/hc/en-us/articles/360008976393-Backups-and-Migration-in-UniFi)
 
-Omit the device ID to run all enrolled, enabled devices. Under **Device Backups → Schedule**, choose the days, time, and time zone, then enable scheduled backups and save. LibreNMS uses the saved schedule for all enrolled, enabled devices. Check the entry with `./lnms schedule:list`. An existing `DEVICE_BACKUPS_SCHEDULED=true` setting supplies the Friday 6 p.m. America/Chicago schedule until you save a schedule in the web interface.
+## Download and restore
 
-Remove a device from future runs with `./lnms device-backups:configure DEVICE_ID --disable`. Its stored backups remain available.
+Use **Download Latest Backup** on the device overview or in its backup history to get the newest successful archive. Choose an older backup ID in the history to download that archive.
 
-## Restore files
+Web downloads use `<short-system-name>.YYYYMMDDHHSS.zip`, for example `carlton-1g-sw01.202611210142.zip`. The timestamp is the backup run's start time in the LibreNMS application time zone. When the system name is unavailable, the plugin uses the short form of the recorded hostname.
 
-The backup database stores the run, per-device results, and AES-256 ZIP data. Email contains the summary only. Export a successful backup ID from the report and open the ZIP with the archive password:
+You can also export by backup ID from the CLI:
 
 ```bash
 ./lnms device-backups:export BACKUP_ID /path/to/new-backup.zip
 ```
 
-The export command verifies the stored checksum before publishing the file. Test restoration separately for each device or server profile.
+The plugin verifies the stored checksum before delivering the ZIP. Open it with the archive password and follow the device or service's restore procedure.
 
 ## Tests
 
-Run these commands from the plugin checkout. The suite uses PHP 8.4 or later with PDO SQLite, Phar, zlib, ZIP with AES-256 support, and the [PHPUnit extensions](https://docs.phpunit.de/en/12.5/installation.html).
+Run from the plugin checkout with PHP 8.4 or later, PDO SQLite, Phar, zlib, ZIP with AES-256 support, and the PHPUnit extensions. [PHPUnit requirements](https://docs.phpunit.de/en/12.5/installation.html)
 
 ```bash
 composer install
 composer test
 ```
 
-Use `composer test -- --testsuite unit` for unit tests or `composer test -- --testsuite database` for the in-memory SQLite tests. SSH is mocked, and archives are written to temporary directories. Composer installs the test dependencies in `.test-vendor`. The suite runs independently of a LibreNMS installation.
+To run only one suite:
+
+```bash
+composer test -- --testsuite unit
+composer test -- --testsuite database
+```
+
+Composer installs test dependencies in `.test-vendor`. The suite uses mock SSH sessions, temporary files, and in-memory SQLite. It runs independently of LibreNMS.

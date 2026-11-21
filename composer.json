@@ -12,6 +12,12 @@
     ],
     "type": "package",
     "license": "MIT",
+    "funding": [
+        {
+            "type": "github",
+            "url": "https://github.com/daryl-peterson"
+        }
+    ],
     "authors": [
         {
             "name": "daryl-peterson",
