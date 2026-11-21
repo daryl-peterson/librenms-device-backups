@@ -1,7 +1,7 @@
 <?php
 
 /**
- * LibreNMS Device Importer Import Controller
+ * LibreNMS Device Backups Plugin Controller
  *
  * @package     librenms-device-backups
  * @author      Daryl Peterson <@gmail.com>
@@ -30,7 +30,7 @@ use DRP\DeviceBackups\TraitValidateAdmin;
 use const DRP\DeviceBackups\PLUGIN_NAME;
 
 /**
- * LibreNMS Device Importer Import Controller
+ * LibreNMS Device Backups Plugin Controller
  *
  * @package     librenms-device-backups
  * @author      Daryl Peterson <@gmail.com>
@@ -39,7 +39,7 @@ use const DRP\DeviceBackups\PLUGIN_NAME;
  * @link        https://github.com/daryl-peterson/
  * @since       0.0.1
  */
-class ImportController extends Controller {
+class PluginController extends Controller {
     use TraitHidePrivates;
     use TraitValidateAdmin;
 
@@ -62,29 +62,6 @@ class ImportController extends Controller {
         return view("$this->plugin::page");
     }
 
-    /**
-     * Import page.
-     *
-     * @return View
-     * @since 0.0.1
-     */
-    public function import(): View {
-        $this->validateAdmin();
-
-        return view("$this->plugin::import", ['info' => $this->info, 'plugin' => $this->plugin]);
-    }
-
-    /**
-     * Export page.
-     *
-     * @return View
-     * @since 0.0.1
-     */
-    public function export(): View {
-        $this->validateAdmin();
-
-        return view("$this->plugin::export", ['info' => $this->info, 'plugin' => $this->plugin]);
-    }
 
     /**
      * Settings page.

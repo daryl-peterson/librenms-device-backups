@@ -39,7 +39,6 @@ use LibreNMS\Plugins;
 
 use DRP\DeviceBackups\Console\CacheClear;
 use DRP\DeviceBackups\Console\CheckMigrationsCommand;
-use DRP\DeviceBackups\Console\ProcessPluginQueue;
 use DRP\DeviceBackups\Hooks\Menu;
 use DRP\DeviceBackups\Hooks\Page;
 use DRP\DeviceBackups\Hooks\Settings;
@@ -117,9 +116,9 @@ class PluginProvider extends ServiceProvider {
 
             if ($this->app->runningInConsole()) {
                 $this->commands([
-                    ProcessPluginQueue::class,
-                    CheckMigrationsCommand::class,
-                    CacheClear::class,
+                    //ProcessPluginQueue::class,
+                    //CheckMigrationsCommand::class,
+                    //CacheClear::class,
                 ]);
             }
 

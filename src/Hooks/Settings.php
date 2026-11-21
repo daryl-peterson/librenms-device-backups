@@ -3,7 +3,7 @@
 /**
  * Settings for the Device Importer plugin.
  *
- * @package     App\Plugins\DeviceImporter
+ * @package     librenms-device-backups
  * @author      Daryl Peterson <@gmail.com>
  * @copyright   Copyright (c) 2026, Daryl Peterson
  * @license     https://opensource.org MIT License
@@ -11,18 +11,18 @@
  * @since       0.0.1
  */
 
-namespace DRP\DeviceImporter\Hooks;
+namespace DRP\DeviceBackups\Hooks;
 
 use App\Plugins\Hooks\SettingsHook;
-use DRP\DeviceImporter\Log;
-use DRP\DeviceImporter\PluginData;
+use DRP\DeviceBackups\Log;
+use DRP\DeviceBackups\PluginData;
 
-use const DRP\DeviceImporter\PLUGIN_NAME;
+use const DRP\DeviceBackups\PLUGIN_NAME;
 
 /**
  * Settings for the Device Importer plugin.
  *
- * @package     App\Plugins\DeviceImporter
+ * @package     librenms-device-backups
  * @author      Daryl Peterson <@gmail.com>
  * @copyright   Copyright (c) 2026, Daryl Peterson
  * @license     https://opensource.org MIT License
@@ -30,7 +30,7 @@ use const DRP\DeviceImporter\PLUGIN_NAME;
  * @since       0.0.1
  */
 class Settings extends SettingsHook {
-    use \DRP\DeviceImporter\TraitHidePrivates;
+    use \DRP\DeviceBackups\TraitHidePrivates;
 
     /**
      * The plugin identifier.
