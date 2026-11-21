@@ -69,6 +69,10 @@ final class BackupStore {
         });
     }
 
+    public function findRun(int $id): ?object {
+        return $this->db->table('device_backup_runs')->where('id', $id)->first();
+    }
+
     public function runs(): Paginator {
         $counts = $this->db->table('device_backup_results')
             ->whereColumn('run_id', 'device_backup_runs.id');

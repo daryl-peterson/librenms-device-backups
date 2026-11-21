@@ -74,6 +74,7 @@ Route::middleware(['web', 'auth'])->prefix("plugin/$plugin/backups")->name("$plu
     Route::post('/ssh/{device}/fingerprint', [DeviceSshController::class, 'fingerprint'])->whereNumber('device')->name('ssh.fingerprint');
     Route::delete('/ssh/{device}', [DeviceSshController::class, 'remove'])->whereNumber('device')->name('ssh.remove');
     Route::get('/devices/{device}', [BackupController::class, 'history'])->whereNumber('device')->name('history');
+    Route::post('/devices/{device}/run', [BackupController::class, 'start'])->whereNumber('device')->name('start');
     Route::get('/devices/{device}/latest', [BackupController::class, 'latest'])->whereNumber('device')->name('latest');
     Route::get('/devices/{device}/download/{backup}', [BackupController::class, 'download'])
         ->whereNumber(['device', 'backup'])->name('download');

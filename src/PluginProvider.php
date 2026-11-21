@@ -40,6 +40,7 @@ use LibreNMS\Interfaces\Plugins\PluginManagerInterface;
 use DRP\DeviceBackups\Backup\BackupSchedule;
 use DRP\DeviceBackups\Console\ConfigureBackup;
 use DRP\DeviceBackups\Console\ExportBackup;
+use DRP\DeviceBackups\Console\ProcessManualBackups;
 use DRP\DeviceBackups\Console\RunBackups;
 use DRP\DeviceBackups\Hooks\DeviceOverview;
 use DRP\DeviceBackups\Hooks\Menu;
@@ -120,7 +121,7 @@ class PluginProvider extends ServiceProvider {
             PluginDb::checkConnection();
 
             if ($this->app->runningInConsole()) {
-                $this->commands([ConfigureBackup::class, ExportBackup::class, RunBackups::class]);
+                $this->commands([ConfigureBackup::class, ExportBackup::class, ProcessManualBackups::class, RunBackups::class]);
 
                 if ($pluginManager->pluginEnabled($pluginName)) {
                     $this->app->booted(function () {
@@ -131,6 +132,8 @@ class PluginProvider extends ServiceProvider {
                                 ->cron($schedule->expression())
                                 ->timezone($schedule->timezone);
                         }
+
+                        $this->app->make(Schedule::class)->command(ProcessManualBackups::class)->everyMinute();
                     });
                 }
             }

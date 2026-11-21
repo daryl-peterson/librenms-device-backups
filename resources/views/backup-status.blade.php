@@ -23,8 +23,13 @@
                             <tr>
                                 <td><a
                                         href="{{ route('device-backups.backups.status', ['run' => $entry->id, 'status' => $status]) }}">#{{ $entry->id }}</a>
+                                    @if ($entry->requested_device_id)
+                                        <small>
+                                            Manual · <a href="{{ route('device-backups.backups.history', ['device' => $entry->requested_device_id]) }}">Device #{{ $entry->requested_device_id }}</a>
+                                        </small>
+                                    @endif
                                 </td>
-                                <td>{{ $entry->started_at }}</td>
+                                <td>{{ $entry->status === 'queued' ? '—' : $entry->started_at }}</td>
                                 <td>{{ $entry->finished_at ?? '—' }}</td>
                                 <td>@include('device-backups::partials.backup-status-badge', [
                                     'state' => $entry->status,
@@ -50,6 +55,16 @@
                 {{ $run ? "Backup Attempts for Run #$run" : 'Backup Attempts' }}
             </legend>
 
+
+            @if ($selectedRun?->requested_at)
+                <p>
+                    Requested {{ $selectedRun->requested_at }} UTC.
+                    @include('device-backups::partials.backup-status-badge', ['state' => $selectedRun->status])
+                </p>
+                @if ($selectedRun->request_error)
+                    <p class="alert alert-danger">{{ $selectedRun->request_error }}</p>
+                @endif
+            @endif
 
             <form method="GET" action="{{ route('device-backups.backups.status') }}" class="form-inline">
                 @if ($run)

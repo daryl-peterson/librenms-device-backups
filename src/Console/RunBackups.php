@@ -8,6 +8,7 @@ use DRP\DeviceBackups\Backup\BackupFailure;
 use DRP\DeviceBackups\Backup\BackupStore;
 use DRP\DeviceBackups\Backup\Collector;
 use DRP\DeviceBackups\Backup\DeviceSshStatus;
+use DRP\DeviceBackups\Backup\ManualBackupRequests;
 use DRP\DeviceBackups\Backup\SshConnection;
 use DRP\DeviceBackups\Backup\Target;
 use DRP\DeviceBackups\PluginData;
@@ -22,33 +23,54 @@ use Throwable;
 final class RunBackups extends Command {
     protected $signature = 'device-backups:run
         {device? : Back up only this LibreNMS device ID}
-        {--check : Validate local settings and enrollment without contacting devices}';
+        {--check : Validate local settings and enrollment without contacting devices}
+        {--request= : Process the specified queued manual backup request}';
 
     protected $description = 'Collect and verify encrypted backups from enrolled LibreNMS devices';
 
-    public function handle(): int {
+    public function handle(ManualBackupRequests $requests): int {
+        $id = $this->positiveInt($this->argument('device'));
+        $request = $this->positiveInt($this->option('request'));
+        if (($this->argument('device') !== null && $id === null)
+            || ($this->option('request') !== null && ($request === null || $id === null || $this->option('check')))) {
+            $this->error('Enter a valid device ID and manual request ID.');
+            return self::FAILURE;
+        }
+
+        $claimed = false;
         $previousUmask = umask(0077);
         try {
-            return $this->runBackups();
+            if ($request !== null && !$requests->isQueued($request, $id)) {
+                return self::SUCCESS;
+            }
+
+            return $this->runBackups($id, $request, $requests, $claimed);
         } catch (BackupFailure $e) {
-            $this->error($e->getMessage());
-            return self::FAILURE;
+            $message = $e->getMessage();
         } catch (Throwable) {
-            $this->error('Device Backups could not complete the run. Check backup database access and storage.');
-            return self::FAILURE;
+            $message = 'Device Backups could not complete the run. Check backup database access and storage.';
         } finally {
             umask($previousUmask);
         }
+
+        if ($request !== null) {
+            try {
+                $requests->fail($request, $id, $claimed, $message);
+            } catch (Throwable) {
+                $this->warn('Could not update the manual request in the backup database.');
+            }
+        }
+        $this->error($message);
+        return self::FAILURE;
     }
 
-    private function runBackups(): int {
+    private function positiveInt(mixed $value): ?int {
+        return filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
+    }
+
+    private function runBackups(?int $id, ?int $request, ManualBackupRequests $requests, bool &$claimed): int {
         if (!PluginData::getPluginModel()?->plugin_active) {
             throw new BackupFailure('Enable Device Backups in LibreNMS first.');
-        }
-
-        $id = $this->argument('device');
-        if ($id !== null && !filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) {
-            throw new BackupFailure('Enter a valid LibreNMS device ID.');
         }
 
         $targets = Device::query()
@@ -102,7 +124,17 @@ final class RunBackups extends Command {
         }
         try {
             if (!flock($lock, LOCK_EX | LOCK_NB)) {
+                if ($request !== null) {
+                    return self::SUCCESS;
+                }
                 throw new BackupFailure('Another Device Backups run is active.');
+            }
+
+            if ($request !== null) {
+                $claimed = $requests->claim($request, $id);
+                if (!$claimed) {
+                    return self::SUCCESS;
+                }
             }
 
             $run = $storage . '/work-' . bin2hex(random_bytes(12));
@@ -111,7 +143,7 @@ final class RunBackups extends Command {
             }
 
             try {
-                return $this->collect(new BackupStore(), $targets, $run, $password, $reserve, $recipient);
+                return $this->collect(new BackupStore(), $targets, $run, $password, $reserve, $recipient, $request);
             } finally {
                 rmdir($run);
             }
@@ -120,8 +152,8 @@ final class RunBackups extends Command {
         }
     }
 
-    private function collect(BackupStore $store, Builder $targets, string $work, #[\SensitiveParameter] string $password, int $reserve, string $recipient): int {
-        $run = $store->start();
+    private function collect(BackupStore $store, Builder $targets, string $work, #[\SensitiveParameter] string $password, int $reserve, string $recipient, ?int $request): int {
+        $run = $request ?? $store->start();
         $lines = [];
         $success = 0;
         $failure = 0;

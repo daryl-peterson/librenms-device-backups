@@ -5,10 +5,12 @@ namespace DRP\DeviceBackups\Controllers;
 use App\Models\Device;
 use DRP\DeviceBackups\Backup\BackupFailure;
 use DRP\DeviceBackups\Backup\BackupStore;
+use DRP\DeviceBackups\Backup\ManualBackupRequests;
 use DRP\DeviceBackups\Backup\Target;
 use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\TraitValidateAdmin;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Gate;
@@ -29,6 +31,7 @@ final class BackupController extends Controller {
                 'runs' => $store->runs(),
                 'results' => $store->results(run: $run, status: $status),
                 'run' => $run,
+                'selectedRun' => $run === null ? null : $store->findRun($run),
                 'status' => $status,
             ]);
         } catch (QueryException) {
@@ -55,7 +58,7 @@ final class BackupController extends Controller {
         }
     }
 
-    public function history(int $device): View {
+    public function history(int $device, ManualBackupRequests $requests): View {
         $store = $this->store();
         $model = $this->visibleDevice($device);
 
@@ -70,10 +73,45 @@ final class BackupController extends Controller {
                 'hostname' => $hostname,
                 'results' => $results,
                 'latest' => $store->findDownload($device),
+                'manualRequest' => $requests->pending($device) ?? $requests->latest($device),
+                'canStartBackup' => $model !== null && !$model->disabled && Target::revision($model) !== null,
             ]);
         } catch (QueryException) {
             abort(503, 'The backup database is unavailable.');
         }
+    }
+
+    public function start(Device $device, ManualBackupRequests $requests): RedirectResponse {
+        $this->authorizePlugin();
+        Gate::authorize('view', $device);
+        $redirect = redirect()->route('device-backups.backups.history', ['device' => $device->getKey()]);
+
+        $password = config('device-backups.archive_password');
+        if (!is_string($password) || $password === '') {
+            return $redirect->with('error', 'Set DEVICE_BACKUPS_ARCHIVE_PASSWORD before starting a backup.');
+        }
+
+        try {
+            [$id, $queued] = Target::withLockedDevice($device, static function (Device $current) use ($requests): array {
+                if ($current->disabled || Target::revision($current) === null) {
+                    throw new BackupFailure('Enable the device and save its SSH settings before starting a backup.');
+                }
+
+                $pending = $requests->pending($current->getKey());
+                return $pending
+                    ? [$pending->id, false]
+                    : [$requests->enqueue($current->getKey()), true];
+            });
+        } catch (BackupFailure $e) {
+            return $redirect->with('error', $e->getMessage());
+        } catch (QueryException) {
+            return $redirect->with('error', 'Could not queue the backup. Check the backup database.');
+        }
+
+        return $redirect->with(
+            $queued ? 'success' : 'info',
+            $queued ? "Backup #$id queued. LibreNMS will pick it up on a scheduler pass." : "Backup #$id is already queued or running.",
+        );
     }
 
     public function latest(int $device): StreamedResponse {
@@ -125,10 +163,14 @@ final class BackupController extends Controller {
     }
 
     private function store(): BackupStore {
-        $this->validateAdmin();
-        abort_unless(PluginData::getPluginModel()?->plugin_active, 404);
+        $this->authorizePlugin();
 
         return new BackupStore();
+    }
+
+    private function authorizePlugin(): void {
+        $this->validateAdmin();
+        abort_unless(PluginData::getPluginModel()?->plugin_active, 404);
     }
 
     private function visibleDevice(int $id): ?Device {

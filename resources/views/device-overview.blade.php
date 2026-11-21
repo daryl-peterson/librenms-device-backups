@@ -13,5 +13,6 @@
             <a class="btn btn-default btn-sm" href="{{ route('device-backups.backups.history', ['device' => $device->getKey()]) }}">View Backup History</a>
         @endunless
         <a class="btn btn-default btn-sm" href="{{ route('device-backups.backups.ssh.edit', ['device' => $device->getKey()]) }}">SSH Settings</a>
+        @include('device-backups::partials.run-backup', ['deviceId' => $device->getKey()])
     </div>
 </div>

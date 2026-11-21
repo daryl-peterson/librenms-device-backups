@@ -2,6 +2,8 @@
     [$badge, $label] = match ($state) {
         'success' => ['success', 'Succeeded'],
         'failed' => ['danger', 'Failed'],
+        'queued' => ['warning', 'Queued'],
+        'not_sent' => ['default', 'Not sent'],
         'running' => ['info', 'Running'],
         'sent' => ['success', 'Sent'],
         'pending' => ['default', 'Pending'],

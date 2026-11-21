@@ -3,6 +3,7 @@
 @section('content')
     @component('device-backups::layouts.panel', ['wide' => true])
         <h3>{{ $hostname }} <small>Device #{{ $deviceId }}</small></h3>
+        @include('device-backups::layouts.flash-messages')
         <p>
             @if ($latest)
                 <a class="btn btn-primary" href="{{ route('device-backups.backups.latest', ['device' => $deviceId]) }}">Download
@@ -13,6 +14,7 @@
                 <a class="btn btn-default" href="{{ route('device-backups.backups.ssh.edit', ['device' => $deviceId]) }}">SSH Settings</a>
             @endif
         </p>
+        @include('device-backups::partials.run-backup')
         @include('device-backups::partials.backup-results', ['showDevice' => false])
     @endcomponent
 @endsection

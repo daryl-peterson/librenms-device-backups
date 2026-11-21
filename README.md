@@ -40,6 +40,8 @@ Enter the SSH username and password, port, and independently verified SHA256 hos
 
 Standard server profiles require an SSH account that can read the selected files. Helper profiles call the existing `/usr/local/sbin/netmonitor-dhcp-backup` or `/usr/local/sbin/netmonitor-kea-backup` via noninteractive sudo. Telnet and the deployment-specific SMx export are outside these profiles.
 
+To start a single-device backup from LibreNMS, open the device overview or its backup history and click **Run Backup**. LibreNMS processes requests through its existing scheduler, including when recurring backups are paused. A queued or running request appears in the device history and on the Status page.
+
 Omit the device ID to run all enrolled, enabled devices. Under **Device Backups → Schedule**, choose the days, time, and time zone, then enable scheduled backups and save. LibreNMS uses the saved schedule for all enrolled, enabled devices. Check the entry with `./lnms schedule:list`. An existing `DEVICE_BACKUPS_SCHEDULED=true` setting supplies the Friday 6 p.m. America/Chicago schedule until you save a schedule in the web interface.
 
 Remove a device from future runs with `./lnms device-backups:configure DEVICE_ID --disable`. Its stored backups remain available.
