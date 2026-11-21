@@ -18,6 +18,7 @@ use App\Models\Plugin;
 use Closure;
 use DRP\DeviceBackups\Backup\BackupSchedule;
 use DRP\DeviceBackups\Log;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 
 /**
@@ -56,13 +57,8 @@ class PluginSettings {
         $this->settings = (array) $this->plugin?->settings;
     }
 
-    public static function hasDatabaseConfiguration(array $settings): bool {
-        return is_array($settings['database_connection'] ?? null)
-            || env('PLUGIN_DB_DATABASE') !== null
-            || env('PLUGIN_DB_HOST') !== null
-            || env('PLUGIN_DB_PORT') !== null
-            || env('PLUGIN_DB_USERNAME') !== null
-            || env('PLUGIN_DB_PASSWORD') !== null;
+    public static function hasSavedDatabase(array $settings): bool {
+        return is_array($settings['database_connection'] ?? null);
     }
 
     public static function databaseSettings(array $settings): array {
@@ -94,10 +90,13 @@ class PluginSettings {
 
     public function saveConnections(array $database, array $formSettings): bool {
         return $this->updateSettings(function (array $settings) use ($database, $formSettings): array {
-
-            $database['encrypted_password'] = Crypt::encryptString($database['password']);
-            unset($database['password'], $settings['password']);
-            $settings['database_connection'] = $database;
+            if (!self::sameDatabase($settings, $database)) {
+                $database['encrypted_password'] = Crypt::encryptString($database['password']);
+                unset($database['password']);
+                $settings['database_connection'] = $database;
+                $settings['database_migrations'] = false;
+            }
+            unset($settings['password']);
 
             foreach (['sftpserver', 'sftpport', 'sftpuser', 'sftpfingerprint', 'backup_report_email'] as $key) {
                 if (array_key_exists($key, $formSettings)) {
@@ -111,6 +110,29 @@ class PluginSettings {
             }
             unset($settings['sftppassword']);
 
+            return $settings;
+        });
+    }
+
+    private static function sameDatabase(array $settings, #[\SensitiveParameter] array $database): bool {
+        if (!self::hasSavedDatabase($settings)) {
+            return false;
+        }
+
+        try {
+            return array_diff_assoc(self::databaseSettings($settings), $database) === [];
+        } catch (DecryptException) {
+            return false;
+        }
+    }
+
+    public function markMigrationsComplete(array $connection, string $version): bool {
+        return $this->updateSettings(static function (array $settings) use ($connection, $version): ?array {
+            if (($settings['database_connection'] ?? null) !== $connection) {
+                return null;
+            }
+
+            $settings['database_migrations'] = $version;
             return $settings;
         });
     }
@@ -135,7 +157,11 @@ class PluginSettings {
 
         return $this->plugin->getConnection()->transaction(function () use ($update): bool {
             $plugin = $this->plugin->newQuery()->lockForUpdate()->findOrFail($this->plugin->getKey());
-            $plugin->settings = $update((array) $plugin->settings);
+            $settings = $update((array) $plugin->settings);
+            if ($settings === null) {
+                return false;
+            }
+            $plugin->settings = $settings;
 
             return $plugin->save();
         });

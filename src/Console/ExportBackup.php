@@ -4,6 +4,7 @@ namespace DRP\DeviceBackups\Console;
 
 use DRP\DeviceBackups\Backup\BackupFailure;
 use DRP\DeviceBackups\Backup\BackupStore;
+use DRP\DeviceBackups\PluginDb;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -13,6 +14,11 @@ final class ExportBackup extends Command {
     protected $description = 'Export and verify an encrypted backup stored in the backup database';
 
     public function handle(): int {
+        if (!PluginDb::isReady()) {
+            $this->error(PluginDb::SETUP_REQUIRED);
+            return self::FAILURE;
+        }
+
         $id = filter_var($this->argument('result'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         if (!$id) {
             $this->error('Enter a valid backup result ID.');

@@ -135,15 +135,17 @@ class PluginProvider extends ServiceProvider {
             $pluginManager->publishHook($pluginName, DeviceOverviewHook::class, DeviceOverview::class);
 
             PluginDb::initConfig();
-            $databaseConnected = PluginDb::checkConnection();
+            if (PluginSettings::hasSavedDatabase(PluginData::getSettings())) {
+                PluginDb::checkConnection();
+            }
 
             if ($this->app->runningInConsole()) {
                 $this->commands([ConfigureBackup::class, ExportBackup::class, ProcessManualBackups::class, RunBackups::class]);
 
                 if ($pluginManager->pluginEnabled($pluginName)) {
-                    $this->app->booted(function () use ($databaseConnected) {
+                    $this->app->booted(function () {
                         $settings = PluginData::getSettings();
-                        if (!$databaseConnected && !PluginSettings::hasDatabaseConfiguration($settings)) {
+                        if (!PluginDb::isReady($settings)) {
                             return;
                         }
 

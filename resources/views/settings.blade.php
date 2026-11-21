@@ -8,6 +8,13 @@
     @component('device-backups::layouts.panel')
         @includeIf("$plugin::partials.author")
 
+        @unless ($databaseReady)
+            <p class="alert alert-info" role="status">
+                {{ $databaseSaved
+                    ? 'Database settings are saved. Run migrations to enable backups.'
+                    : 'Test and save the backup database settings before running migrations.' }}
+            </p>
+        @endunless
 
         <form id="device-backups-settings" method="POST" action="{{ route("$plugin.save-settings") }}">
             @csrf
@@ -85,7 +92,7 @@
                     value="{{ old('backup_report_email', $info['settings']['backup_report_email'] ?? '') }}">
             </div>
 
-            <button type="submit" class="btn btn-primary pull-right">Test, Migrate and Save</button>
+            <button type="submit" class="btn btn-primary pull-right">Test and Save Settings</button>
             <button id="device-backups-sftptest" type="submit" class="btn btn-primary pull-right"
                 style="margin-right: 10px" data-connection-test="SFTP"
                 data-test-fields="_token sftpserver sftpport sftpuser sftppassword sftpfingerprint" formnovalidate
@@ -97,6 +104,12 @@
                 formaction="{{ route("$plugin.test-connection") }}">Test DB</button>
 
 
+        </form>
+
+        <form method="POST" action="{{ route("$plugin.save-settings") }}">
+            @csrf
+            <button type="submit" name="database_action" value="migrate" class="btn btn-default"
+                @disabled(!$databaseSaved)>Run Migrations</button>
         </form>
     @endcomponent
 @endsection

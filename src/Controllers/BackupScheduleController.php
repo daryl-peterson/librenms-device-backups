@@ -4,6 +4,7 @@ namespace DRP\DeviceBackups\Controllers;
 
 use DateTimeZone;
 use DRP\DeviceBackups\Backup\BackupSchedule;
+use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
 use DRP\DeviceBackups\PluginSettings;
 use DRP\DeviceBackups\TraitValidateAdmin;
 use Illuminate\Database\QueryException;
@@ -14,6 +15,10 @@ use Illuminate\View\View;
 
 final class BackupScheduleController extends Controller {
     use TraitValidateAdmin;
+
+    public function __construct() {
+        $this->middleware(RequireBackupDatabase::class);
+    }
 
     public function edit(): View {
         $settings = $this->settings();

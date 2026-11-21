@@ -8,6 +8,7 @@ use DRP\DeviceBackups\Backup\DeviceSshStatus;
 use DRP\DeviceBackups\Backup\SshConnection;
 use DRP\DeviceBackups\Backup\SshFailure;
 use DRP\DeviceBackups\Backup\Target;
+use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
 use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\TraitValidateAdmin;
 use Illuminate\Database\QueryException;
@@ -25,6 +26,10 @@ use Throwable;
 
 final class DeviceSshController extends Controller {
     use TraitValidateAdmin;
+
+    public function __construct() {
+        $this->middleware(RequireBackupDatabase::class);
+    }
 
     public function index(Request $request): View {
         $this->authorizePlugin();

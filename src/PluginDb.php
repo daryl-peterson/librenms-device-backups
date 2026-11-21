@@ -17,12 +17,13 @@ namespace DRP\DeviceBackups;
  */
 
 use DateTimeImmutable;
+use Illuminate\Database\QueryException;
 
 /**
  * Laravel and application imports.
  */
 
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 
@@ -49,6 +50,9 @@ class PluginDb {
 
     use TraitHidePrivates;
 
+    public const SETUP_REQUIRED = 'Test and save the backup database settings, then run migrations to enable backups.';
+    private const MIGRATIONS_PATH = __DIR__ . '/../database/migrations';
+
     /**
      * Plugin cache instance
      */
@@ -58,6 +62,7 @@ class PluginDb {
      * Initialization flag
      */
     private static bool $initialized = false;
+    private static ?array $configuredDatabase = null;
 
     /**
      * Check submitted settings with a fresh, read-only query.
@@ -136,7 +141,7 @@ class PluginDb {
     }
 
     /**
-     * Apply plugin migrations using the settings verified by the save request.
+     * Apply plugin migrations using the tested, saved connection.
      *
      * @param array{host: string, port: int|string, database: string, username: string, password?: string|null} $settings
      */
@@ -149,33 +154,56 @@ class PluginDb {
         Config::set($key, self::connectionConfig($settings));
 
         try {
-            return Artisan::call('migrate', [
-                '--database' => $connection,
-                '--path' => [dirname(__DIR__) . '/database/migrations'],
-                '--realpath' => true,
-                '--force' => true,
-                '--isolated' => 1,
-            ]) === 0;
+            return Cache::lock('device-backups:migrations', 3600)->get(static function () use ($connection): bool {
+                $migrator = app('migrator');
+
+                return $migrator->usingConnection($connection, static function () use ($migrator): bool {
+                    $repository = $migrator->getRepository();
+                    if (!$migrator->repositoryExists()) {
+                        $repository->createRepository();
+                    }
+
+                    $migrator->run([self::MIGRATIONS_PATH]);
+                    return array_diff(self::migrationNames(), $repository->getRan()) === [];
+                });
+            });
         } finally {
             DB::purge($connection);
             Config::set($key, $previous);
         }
     }
 
-    public static function hasPendingMigrations(): bool {
-        $path = dirname(__DIR__) . '/database/migrations';
-        if (!is_dir($path)) {
+    private static function migrationNames(): array {
+        return array_map(static fn (string $file): string => basename($file, '.php'), glob(self::MIGRATIONS_PATH . '/*.php'));
+    }
+
+    public static function migrationVersion(): string {
+        return hash('sha256', implode("\n", self::migrationNames()));
+    }
+
+    public static function isReady(?array $settings = null): bool {
+        $settings ??= PluginData::getSettings();
+        if (!PluginSettings::hasSavedDatabase($settings)) {
             return false;
         }
 
-        $conn = self::getDbConnection();
-        $migrations = Artisan::call('migrate:status', [
-            '--database' => $conn,
-            '--path'     => $path,
-            '--realpath' => true,
-        ]);
-        $output = Artisan::output();
-        return str_contains($output, 'No');
+        if (self::$initialized && $settings['database_connection'] !== self::$configuredDatabase) {
+            return false;
+        }
+
+        if (array_key_exists('database_migrations', $settings)) {
+            return $settings['database_migrations'] === self::migrationVersion();
+        }
+
+        // Earlier releases tested connections before saving them. Verify their migration history.
+        $repository = Config::get('database.migrations', 'migrations');
+        $table = is_array($repository) ? $repository['table'] : $repository;
+        try {
+            $applied = DB::connection(self::getDbConnection())->table($table)->pluck('migration')->all();
+            return array_diff(self::migrationNames(), $applied) === [];
+        } catch (QueryException) {
+            return false;
+        }
     }
 
 
@@ -208,7 +236,8 @@ class PluginDb {
             return;
         }
 
-        $settings = PluginSettings::databaseSettings((new PluginSettings())->all());
+        $saved = (new PluginSettings())->all();
+        $settings = PluginSettings::databaseSettings($saved);
         self::$pluginCache = new PluginCache();
 
         Config::set('database.connections.' . PLUGIN_DB_CONNECTION, self::connectionConfig($settings));
@@ -221,6 +250,7 @@ class PluginDb {
             'retry_after' => 90,
         ]);
 
+        self::$configuredDatabase = $saved['database_connection'] ?? null;
         self::$initialized = true;
     }
 

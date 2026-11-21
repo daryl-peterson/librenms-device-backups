@@ -2,7 +2,8 @@
     $pluginName = \DRP\DeviceBackups\PLUGIN_NAME;
     $links = [['Plugin', route('plugin.page', ['plugin' => $pluginName]), ['plugin.page']]];
 
-    if (auth()->user()?->hasRole('admin')) {
+    $admin = auth()->user()?->hasRole('admin');
+    if ($admin && \DRP\DeviceBackups\PluginDb::isReady($info['settings'] ?? null)) {
         $links = array_merge($links, [
             ['Status', route('device-backups.backups.status'), ['device-backups.backups.status']],
             [
@@ -12,8 +13,10 @@
             ],
             ['SSH Status', route('device-backups.backups.ssh.index'), ['device-backups.backups.ssh.*']],
             ['Schedule', route('device-backups.backups.schedule'), ['device-backups.backups.schedule']],
-            ['Settings', route('device-backups.settings'), ['device-backups.settings']],
         ]);
+    }
+    if ($admin) {
+        $links[] = ['Settings', route('device-backups.settings'), ['device-backups.settings']];
     }
 @endphp
 

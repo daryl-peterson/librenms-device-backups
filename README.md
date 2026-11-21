@@ -23,13 +23,12 @@ cd /opt/librenms
 
 During installation, Laravel's package discovery clears a route cache that is missing the **Device Backups** status route. If you pull route changes into a symlinked checkout, run `./lnms route:clear` and reload LibreNMS.
 
-1. Open **Device Backups → Settings** and enter the credentials for the separate MySQL or MariaDB database. **Test DB** previews the connection. **Test, Migrate and Save** verifies the submitted credentials, applies pending Device Backups migrations to that database, and saves the settings once migrations succeed. The database user needs permission to create and alter the plugin tables and indexes.
-2. Set `DEVICE_BACKUPS_ARCHIVE_PASSWORD` in LibreNMS's environment. Keep it with your recovery credentials. If you change it later, older ZIPs still need their original password.
-3. Optionally set **Backup Report Email** to receive results through LibreNMS's configured mail backend. The email lists successful and failed devices and includes backup IDs for successful captures.
+1. Open **Device Backups → Settings** and enter the credentials for the separate MySQL or MariaDB database. Click **Test and Save Settings**. The plugin saves the credentials after it verifies the connection.
+2. Click **Run Migrations** to apply the pending Device Backups migrations to the saved database. The database user needs permission to create and alter the plugin tables and indexes. This completes database setup and enables backup functions.
+3. Set `DEVICE_BACKUPS_ARCHIVE_PASSWORD` in LibreNMS's environment. Keep it with your recovery credentials. If you change it later, older ZIPs still need their original password.
+4. Optionally set **Backup Report Email** to receive results through LibreNMS's configured mail backend. The email lists successful and failed devices and includes backup IDs for successful captures.
 
-Use **Test, Migrate and Save** again when an update adds a migration or when moving to a different backup database.
-
-On a fresh install, the scheduler waits for a configured backup database if the built-in defaults cannot connect.
+After changing the database connection, click **Test and Save Settings**, then **Run Migrations**. If an update adds a migration, run it from Settings before resuming backups.
 
 Settings also has a **Test SFTP** action for checking a configured SFTP destination. Backup archives are stored in the backup database.
 

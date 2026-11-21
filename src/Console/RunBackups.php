@@ -29,6 +29,11 @@ final class RunBackups extends Command {
     protected $description = 'Collect and verify encrypted backups from enrolled LibreNMS devices';
 
     public function handle(ManualBackupRequests $requests): int {
+        if (!PluginDb::isReady()) {
+            $this->error(PluginDb::SETUP_REQUIRED);
+            return self::FAILURE;
+        }
+
         $id = $this->positiveInt($this->argument('device'));
         $request = $this->positiveInt($this->option('request'));
         if (($this->argument('device') !== null && $id === null)

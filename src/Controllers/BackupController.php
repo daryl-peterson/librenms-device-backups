@@ -8,6 +8,7 @@ use DRP\DeviceBackups\Backup\BackupFailure;
 use DRP\DeviceBackups\Backup\BackupStore;
 use DRP\DeviceBackups\Backup\ManualBackupRequests;
 use DRP\DeviceBackups\Backup\Target;
+use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
 use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\TraitValidateAdmin;
 use Illuminate\Database\QueryException;
@@ -21,7 +22,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 final class BackupController extends Controller {
     use TraitValidateAdmin;
 
-    public function status(Request $request): View {
+    public function __construct() {
+        $this->middleware(RequireBackupDatabase::class);
+    }
+
+    public function status(Request $request): View|RedirectResponse {
         $store = $this->store();
         $run = filter_var($request->query('run'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
         $status = $request->query('status');
@@ -36,11 +41,11 @@ final class BackupController extends Controller {
                 'status' => $status,
             ]);
         } catch (QueryException) {
-            abort(503, 'The backup database is unavailable.');
+            return $this->backupDatabaseSettings();
         }
     }
 
-    public function devices(Request $request, ManualBackupRequests $requests): View {
+    public function devices(Request $request, ManualBackupRequests $requests): View|RedirectResponse {
         $store = $this->store();
         $search = $this->deviceSearch($request->query('search'));
         $inventory = Target::inventory($search)->withExists([
@@ -56,11 +61,11 @@ final class BackupController extends Controller {
                 'search' => $search,
             ]);
         } catch (QueryException) {
-            abort(503, 'The backup database is unavailable.');
+            return $this->backupDatabaseSettings();
         }
     }
 
-    public function history(int $device, ManualBackupRequests $requests): View {
+    public function history(int $device, ManualBackupRequests $requests): View|RedirectResponse {
         $store = $this->store();
         $model = $this->visibleDevice($device);
 
@@ -79,8 +84,13 @@ final class BackupController extends Controller {
                 'canStartBackup' => $model !== null && !$model->disabled && Target::revision($model) !== null,
             ]);
         } catch (QueryException) {
-            abort(503, 'The backup database is unavailable.');
+            return $this->backupDatabaseSettings();
         }
+    }
+
+    private function backupDatabaseSettings(): RedirectResponse {
+        return redirect()->route('device-backups.settings')->with('error',
+            'Could not load the backup database. Test and save the connection in Settings, then run migrations.');
     }
 
     public function start(Request $request, Device $device, ManualBackupRequests $requests): RedirectResponse {

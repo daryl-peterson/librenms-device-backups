@@ -17,6 +17,11 @@ final class ProcessManualBackups extends Command {
     protected $description = 'Run the next manually requested device backup';
 
     public function handle(ManualBackupRequests $requests): int {
+        if (!$this->option('check') && !PluginDb::isReady()) {
+            $this->error(PluginDb::SETUP_REQUIRED);
+            return self::FAILURE;
+        }
+
         try {
             if ($this->option('check')) {
                 if (!Schema::connection(PluginDb::getDbConnection())->hasColumns('device_backup_runs', [

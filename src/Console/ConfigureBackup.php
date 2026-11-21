@@ -5,6 +5,7 @@ namespace DRP\DeviceBackups\Console;
 use App\Models\Device;
 use DRP\DeviceBackups\Backup\SshConnection;
 use DRP\DeviceBackups\Backup\Target;
+use DRP\DeviceBackups\PluginDb;
 use Illuminate\Console\Command;
 
 final class ConfigureBackup extends Command {
@@ -16,6 +17,11 @@ final class ConfigureBackup extends Command {
     protected $description = 'Enroll a LibreNMS device for SSH backups';
 
     public function handle(): int {
+        if (!PluginDb::isReady()) {
+            $this->error(PluginDb::SETUP_REQUIRED);
+            return self::FAILURE;
+        }
+
         $id = filter_var($this->argument('device'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         $device = $id ? Device::find($id) : null;
         if (!$device) {

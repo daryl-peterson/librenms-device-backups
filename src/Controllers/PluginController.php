@@ -94,6 +94,8 @@ class PluginController extends Controller {
             'info' => $this->info,
             'plugin' => $this->plugin,
             'database' => $database,
+            'databaseSaved' => PluginSettings::hasSavedDatabase($this->info['settings']),
+            'databaseReady' => PluginDb::isReady($this->info['settings']),
         ]);
     }
 
@@ -161,6 +163,10 @@ class PluginController extends Controller {
     }
 
     public function saveSettings(Request $request): RedirectResponse {
+        if ($request->input('database_action') === 'migrate') {
+            return $this->migrateDatabase($request);
+        }
+
         return $this->handleSettings($request, true);
     }
 
@@ -190,31 +196,11 @@ class PluginController extends Controller {
         try {
             PluginDb::testConnection($database);
         } catch (PDOException $e) {
-            $message = match ((int) ($e->errorInfo[1] ?? $e->getCode())) {
-                1045, 1698 => 'The database rejected the login. Check the username, password, and account authentication method.',
-                1044 => 'The database user does not have access to the selected database.',
-                1049 => 'The selected database does not exist.',
-                2002, 2003, 2005 => 'Could not reach the database server. Check the host, port, and network access.',
-                default => 'Could not connect to the backup database with the supplied settings.',
-            };
-
-            return $this->settingsResponse($request, $save, 'error', $message);
+            return $this->settingsResponse($request, $save, 'error', $this->databaseConnectionError($e));
         }
 
         if (!$save) {
             return $this->settingsResponse($request, false, 'success', 'Connected to the backup database successfully.');
-        }
-
-        try {
-            if (!PluginDb::migrateSettings($database)) {
-                return $this->settingsResponse($request, true, 'error',
-                    'The database connection passed, but migrations did not complete. Try again after any running migrations finish.');
-            }
-        } catch (Throwable $e) {
-            $code = $e instanceof PDOException ? ' (database error ' . ($e->errorInfo[1] ?? $e->getCode()) . ')' : '';
-            Log::error('Device Backups migrations did not complete' . $code . '.');
-            return $this->settingsResponse($request, true, 'error',
-                'The database connection passed, but migrations failed. Check the backup database user’s schema permissions and the LibreNMS log.');
         }
 
         $formSettings = array_diff_key($validated, $database);
@@ -230,7 +216,56 @@ class PluginController extends Controller {
 
         PluginDb::clearConnectionChecks();
 
-        return $this->settingsResponse($request, true, 'success', 'Database connection verified, migrations are up to date, and settings were saved.');
+        return $this->settingsResponse($request, true, 'success', 'Database connection verified and settings saved.');
+    }
+
+    private function migrateDatabase(Request $request): RedirectResponse {
+        $this->validateAdmin();
+        $settings = new PluginSettings();
+        $saved = $settings->all();
+        if (!PluginSettings::hasSavedDatabase($saved)) {
+            return $this->settingsResponse($request, true, 'error', 'Test and save the database settings before running migrations.');
+        }
+
+        try {
+            $database = PluginSettings::databaseSettings($saved);
+            PluginDb::testConnection($database);
+        } catch (DecryptException) {
+            return $this->settingsResponse($request, true, 'error', 'The saved database password could not be read. Enter it again and save the settings.');
+        } catch (PDOException $e) {
+            return $this->settingsResponse($request, true, 'error', $this->databaseConnectionError($e));
+        }
+
+        try {
+            if (!PluginDb::migrateSettings($database)) {
+                return $this->settingsResponse($request, true, 'error',
+                    'Migrations did not complete. Try again after any running migrations finish.');
+            }
+
+            if (!$settings->markMigrationsComplete($saved['database_connection'], PluginDb::migrationVersion())) {
+                return $this->settingsResponse($request, true, 'error',
+                    'Could not confirm migrations for the saved settings. Reload Settings and run migrations again.');
+            }
+        } catch (Throwable $e) {
+            $code = $e instanceof PDOException ? ' (database error ' . ($e->errorInfo[1] ?? $e->getCode()) . ')' : '';
+            Log::error('Device Backups migrations did not complete' . $code . '.');
+            return $this->settingsResponse($request, true, 'error',
+                'Could not complete database setup. Check the backup database user’s schema permissions and the LibreNMS log.');
+        }
+
+        PluginDb::clearConnectionChecks();
+
+        return $this->settingsResponse($request, true, 'success', 'Migrations are up to date. Backup functions are enabled.');
+    }
+
+    private function databaseConnectionError(PDOException $e): string {
+        return match ((int) ($e->errorInfo[1] ?? $e->getCode())) {
+            1045, 1698 => 'The database rejected the login. Check the username, password, and account authentication method.',
+            1044 => 'The database user does not have access to the selected database.',
+            1049 => 'The selected database does not exist.',
+            2002, 2003, 2005 => 'Could not reach the database server. Check the host, port, and network access.',
+            default => 'Could not connect to the backup database with the supplied settings.',
+        };
     }
 
     private function settingsResponse(Request $request, bool $save, string $status, string $message): JsonResponse|RedirectResponse {

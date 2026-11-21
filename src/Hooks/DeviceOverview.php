@@ -9,11 +9,12 @@ use App\Plugins\Hooks\DeviceOverviewHook;
 use DRP\DeviceBackups\Backup\BackupStore;
 use DRP\DeviceBackups\Backup\ManualBackupRequests;
 use DRP\DeviceBackups\Backup\Target;
+use DRP\DeviceBackups\PluginDb;
 use Illuminate\Database\QueryException;
 
 final class DeviceOverview extends DeviceOverviewHook {
     public function authorize(?Authenticatable $user, Device $device): bool {
-        return $user instanceof User && $user->hasRole('admin') && $user->can('view', $device);
+        return $user instanceof User && $user->hasRole('admin') && $user->can('view', $device) && PluginDb::isReady();
     }
 
     public function data(Device $device): array {
