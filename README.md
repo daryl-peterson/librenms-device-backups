@@ -21,6 +21,8 @@ cd /opt/librenms
 ./lnms plugin:enable device-backups
 ```
 
+During installation, Laravel's package discovery clears a route cache that is missing the **Device Backups** status route. If you pull route changes into a symlinked checkout, run `./lnms route:clear` and reload LibreNMS.
+
 1. Open **Device Backups → Settings** and enter the credentials for the separate MySQL or MariaDB database. Click **Test DB**, then **Save Settings**.
 2. Set `DEVICE_BACKUPS_ARCHIVE_PASSWORD` in LibreNMS's environment. Keep it with your recovery credentials. If you change it later, older ZIPs still need their original password.
 3. Run the plugin migrations against the configured backup database. Repeat this step when an update adds a migration or when moving to a different backup database.

@@ -24,8 +24,8 @@ use Throwable;
  * Laravel and application imports.
  */
 
+use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\ServiceProvider;
 use LibreNMS\Interfaces\Plugins\Hooks\DeviceOverviewHook;
 use LibreNMS\Interfaces\Plugins\Hooks\MenuEntryHook as MenuEntryHookInterface;
@@ -81,8 +81,25 @@ class PluginProvider extends ServiceProvider {
         require_once __DIR__ . '/constants.php';
         $this->mergeConfigFrom(dirname(__DIR__) . '/config/device-backups.php', 'device-backups');
         \Illuminate\Foundation\Http\Middleware\TrimStrings::except(['sftppassword', 'ssh_password', 'enable_password']);
+
+        if ($this->app->runningInConsole()) {
+            $this->app['events']->listen(CommandFinished::class, $this->clearStaleRouteCache(...));
+        }
     }
 
+    private function clearStaleRouteCache(CommandFinished $event): void {
+        if ($event->command !== 'package:discover' || $event->exitCode !== 0 || !$this->app->routesAreCached()) {
+            return;
+        }
+
+        if ($this->app['router']->has(PLUGIN_NAME . '.backups.status')) {
+            return;
+        }
+
+        if (!$this->app['files']->delete($this->app->getCachedRoutesPath())) {
+            $event->output->writeln('<comment>Could not clear the stale route cache. Run ./lnms route:clear as the LibreNMS service user.</comment>');
+        }
+    }
 
     /**
      * Bootstrap the plugin services.
@@ -137,43 +154,8 @@ class PluginProvider extends ServiceProvider {
                     });
                 }
             }
-
-            $this->clearCacheOnFirstRun();
         } catch (Throwable $th) {
             Log::error("Error booting plugin provider: " . $th->getMessage());
-        }
-    }
-
-    /**
-     * Clear cache on the first run of the plugin.
-     *
-     * This method checks for a hidden lock file to determine if it's the first run.
-     * If it is, it clears the route, view, and cache, then creates the lock file.
-     *
-     * @since 0.0.0.1
-     */
-    protected function clearCacheOnFirstRun() {
-
-
-        // Path to a hidden lock file inside your plugin folder
-        $lockFile = __DIR__ . '/.installed';
-
-        // If the file doesn't exist, this is the first run
-        if (file_exists($lockFile)) {
-            return;
-        }
-
-        try {
-
-            // Programmatically run the equivalent of your 'lnms' commands
-            Artisan::call('route:clear');
-            Artisan::call('view:clear');
-            Artisan::call('cache:clear');
-
-            // Create the lock file so this code never triggers again
-            file_put_contents($lockFile, date('Y-m-d H:i:s'));
-        } catch (Throwable $th) {
-            Log::error("Error clearing cache on first run: " . $th->getMessage());
         }
     }
 }
