@@ -85,7 +85,7 @@
                     value="{{ old('backup_report_email', $info['settings']['backup_report_email'] ?? '') }}">
             </div>
 
-            <button type="submit" class="btn btn-primary pull-right">Save Settings</button>
+            <button type="submit" class="btn btn-primary pull-right">Test, Migrate and Save</button>
             <button id="device-backups-sftptest" type="submit" class="btn btn-primary pull-right"
                 style="margin-right: 10px" data-connection-test="SFTP"
                 data-test-fields="_token sftpserver sftpport sftpuser sftppassword sftpfingerprint" formnovalidate

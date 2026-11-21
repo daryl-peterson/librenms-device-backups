@@ -16,7 +16,6 @@ namespace DRP\DeviceBackups;
  * Standard PHP imports.
  */
 
-use Throwable;
 use DateTimeImmutable;
 
 /**
@@ -26,7 +25,6 @@ use DateTimeImmutable;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 
 /**
@@ -60,19 +58,6 @@ class PluginDb {
      * Initialization flag
      */
     private static bool $initialized = false;
-
-    /**
-     * Run the plugin database initialization and checks.
-     *
-     * @return void
-     * @since 0.0.1
-     */
-    public static function run(): void {
-        if (!self::checkConnection()) {
-            return;
-        }
-        self::checkMigrationsTable();
-    }
 
     /**
      * Check submitted settings with a fresh, read-only query.
@@ -151,69 +136,29 @@ class PluginDb {
     }
 
     /**
-     * Check if the migrations table exists and install it if necessary.
+     * Apply plugin migrations using the settings verified by the save request.
      *
-     * @param bool $bypassCache Whether to bypass the cached result and perform a fresh check.
-     * @return void
-     * @since 0.0.1
+     * @param array{host: string, port: int|string, database: string, username: string, password?: string|null} $settings
      */
-    public static function checkMigrationsTable(bool $bypassCache = false) {
-        $path = dirname(__DIR__) . '/database/migrations';
-        if (!is_dir($path)) {
-            return;
-        }
+    public static function migrateSettings(#[\SensitiveParameter] array $settings): bool {
+        $connection = self::getDbConnection();
+        $key = 'database.connections.' . $connection;
+        $previous = Config::get($key);
 
-        $ttl_days = Helper::days(1);
-        $ttl_mins = Helper::minutes(5);
-
-        if (!self::$initialized) {
-            self::initConfig();
-        }
-
-        // Check database connection before proceeding
-        if (!self::checkConnection()) {
-            return;
-        }
-
-        $conn = self::getDbConnection();
-
-        if (self::$pluginCache->has(CACHE_DB_MIGRATION_CHECK) && !$bypassCache) {
-            return;
-        }
+        DB::purge($connection);
+        Config::set($key, self::connectionConfig($settings));
 
         try {
-
-            // Check if the migrations table exists before attempting to install migrations
-            if (! Schema::connection($conn)->hasTable('migrations')) {
-                Artisan::call('migrate:install', [
-                    '--database' => $conn,
-                ]);
-            }
-
-            $result = Artisan::call('migrate', [
-                '--database' => $conn,
-                // Ensures migrations run without interactive prompts
-                '--force' => true,
-                // Optional: isolates to just your plugin files
-                '--path'     => $path,
+            return Artisan::call('migrate', [
+                '--database' => $connection,
+                '--path' => [dirname(__DIR__) . '/database/migrations'],
                 '--realpath' => true,
-            ]);
-
-            $output = Artisan::output();
-            Log::debug("Migrations output: " . PHP_EOL . $output);
-
-            self::$pluginCache->set(
-                CACHE_DB_MIGRATION_CHECK,
-                true,
-                $ttl_days
-            );
-        } catch (Throwable $th) {
-            Log::error("Error checking migrations table: " . $th->getMessage());
-            self::$pluginCache->set(
-                CACHE_DB_MIGRATION_CHECK,
-                true,
-                $ttl_mins
-            );
+                '--force' => true,
+                '--isolated' => 1,
+            ]) === 0;
+        } finally {
+            DB::purge($connection);
+            Config::set($key, $previous);
         }
     }
 
@@ -264,16 +209,9 @@ class PluginDb {
         }
 
         $settings = PluginSettings::databaseSettings((new PluginSettings())->all());
-        $settings['host'] = self::tcpHost($settings['host']);
         self::$pluginCache = new PluginCache();
 
-        Config::set('database.connections.' . PLUGIN_DB_CONNECTION, $settings + [
-            'driver' => 'mysql',
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => '',
-            'options' => [\PDO::ATTR_TIMEOUT => 5],
-        ]);
+        Config::set('database.connections.' . PLUGIN_DB_CONNECTION, self::connectionConfig($settings));
 
         Config::set('queue.connections.device_backups', [
             'connection' => PLUGIN_DB_CONNECTION,
@@ -284,6 +222,18 @@ class PluginDb {
         ]);
 
         self::$initialized = true;
+    }
+
+    private static function connectionConfig(#[\SensitiveParameter] array $settings): array {
+        $settings['host'] = self::tcpHost($settings['host']);
+
+        return $settings + [
+            'driver' => 'mysql',
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'options' => [\PDO::ATTR_TIMEOUT => 5],
+        ];
     }
 
     private static function getDate(): string {

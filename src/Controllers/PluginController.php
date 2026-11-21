@@ -32,6 +32,7 @@ use Illuminate\View\View;
 
 use DRP\DeviceBackups\Backup\BackupFailure;
 use DRP\DeviceBackups\Backup\SshConnection;
+use DRP\DeviceBackups\Log;
 use DRP\DeviceBackups\TraitHidePrivates;
 use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\PluginDb;
@@ -40,6 +41,7 @@ use PDOException;
 use phpseclib4\Exception\BaseException as SftpException;
 use phpseclib4\Net\SFTP;
 use DRP\DeviceBackups\TraitValidateAdmin;
+use Throwable;
 use const DRP\DeviceBackups\PLUGIN_NAME;
 
 /**
@@ -188,8 +190,8 @@ class PluginController extends Controller {
         try {
             PluginDb::testConnection($database);
         } catch (PDOException $e) {
-            $message = match ((int) ($e->errorInfo[1] ?? 0)) {
-                1045 => 'The database rejected the username or password.',
+            $message = match ((int) ($e->errorInfo[1] ?? $e->getCode())) {
+                1045, 1698 => 'The database rejected the login. Check the username, password, and account authentication method.',
                 1044 => 'The database user does not have access to the selected database.',
                 1049 => 'The selected database does not exist.',
                 2002, 2003, 2005 => 'Could not reach the database server. Check the host, port, and network access.',
@@ -201,6 +203,18 @@ class PluginController extends Controller {
 
         if (!$save) {
             return $this->settingsResponse($request, false, 'success', 'Connected to the backup database successfully.');
+        }
+
+        try {
+            if (!PluginDb::migrateSettings($database)) {
+                return $this->settingsResponse($request, true, 'error',
+                    'The database connection passed, but migrations did not complete. Try again after any running migrations finish.');
+            }
+        } catch (Throwable $e) {
+            $code = $e instanceof PDOException ? ' (database error ' . ($e->errorInfo[1] ?? $e->getCode()) . ')' : '';
+            Log::error('Device Backups migrations did not complete' . $code . '.');
+            return $this->settingsResponse($request, true, 'error',
+                'The database connection passed, but migrations failed. Check the backup database user’s schema permissions and the LibreNMS log.');
         }
 
         $formSettings = array_diff_key($validated, $database);
@@ -216,7 +230,7 @@ class PluginController extends Controller {
 
         PluginDb::clearConnectionChecks();
 
-        return $this->settingsResponse($request, true, 'success', 'Settings saved. Device Backups will use this database connection.');
+        return $this->settingsResponse($request, true, 'success', 'Database connection verified, migrations are up to date, and settings were saved.');
     }
 
     private function settingsResponse(Request $request, bool $save, string $status, string $message): JsonResponse|RedirectResponse {
