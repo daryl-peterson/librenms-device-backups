@@ -113,3 +113,12 @@ composer test -- --testsuite database
 ```
 
 Composer installs test dependencies in `.test-vendor`. The suite uses mock SSH sessions, temporary files, and in-memory SQLite. It runs independently of LibreNMS.
+
+## Screen Shots
+![](screenshots/screen-shot-01.png)
+
+![](screenshots/screen-shot-02.png)
+
+![](screenshots/screen-shot-03.png)
+
+![](screenshots/screen-shot-04.png)
