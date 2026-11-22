@@ -9,11 +9,11 @@ This project is open-source under the [MIT License](LICENSE). If this plugin hel
 [![Buy Me A Coffee](https://shields.io)](https://buymeacoffee.com/daryl.peterson)
 
 
-## 1. Adding from Packagist
+# 1. Adding from Packagist
 ./lnms plugin:add daryl-peterson/librenms-device-backups dev-main
 
 
-## 2. Adding a Local / Unreleased Plugin
+# 2. Adding a Local / Unreleased Plugin
 
 Use PHP 8.4 or later with ZIP and AES-256 support, Phar, and zlib. Run the following commands from the LibreNMS installation directory as the LibreNMS service user.
 
@@ -38,7 +38,7 @@ Click **Send Test Email** to check delivery to the address currently in the fiel
 
 After changing the database connection, click **Test and Save Settings**, then **Run Migrations**. If an update adds a migration, run it from Settings before resuming backups.
 
-## Enroll a device and check SSH
+# Enroll a device and check SSH
 
 Open **Device Backups → SSH Status**, find the device, and click **Configure SSH** or **Edit SSH**. The device overview also links to **SSH Settings**.
 
@@ -49,7 +49,7 @@ Open **Device Backups → SSH Status**, find the device, and click **Configure S
 
 The plugin encrypts the saved SSH credentials. When editing an enrolled device, leave the password field blank to keep the saved password. **Remove Enrollment** stops future backups and keeps the device's stored archives.
 
-## Run and monitor backups
+# Run and monitor backups
 
 - **Run one device.** Click **Run Backup** on the device overview, in its backup history, or on **By Device**. The LibreNMS scheduler checks queued requests each minute, including when recurring backups are paused.
 - **Run on a schedule.** Open **Device Backups → Schedule**, select the days, time, and time zone, enable scheduled backups, and click **Save Schedule**. The page shows the next run. The schedule applies to all enrolled, enabled devices.
@@ -57,7 +57,7 @@ The plugin encrypts the saved SSH credentials. When editing an enrolled device, 
 
 An existing `DEVICE_BACKUPS_SCHEDULED=true` setting supplies the Friday 6 p.m. America/Chicago schedule until you save a schedule in the web interface.
 
-### CLI commands
+## CLI commands
 
 ```bash
 ./lnms device-backups:configure DEVICE_ID
@@ -99,24 +99,6 @@ You can also export by backup ID from the CLI:
 ```
 
 The plugin verifies the stored checksum before delivering the ZIP. Open it with the archive password and follow the device or service's restore procedure.
-
-## Tests
-
-Run from the plugin checkout with PHP 8.4 or later, PDO SQLite, Phar, zlib, ZIP with AES-256 support, and the PHPUnit extensions. [PHPUnit requirements](https://docs.phpunit.de/en/12.5/installation.html)
-
-```bash
-composer install
-composer test
-```
-
-To run only one suite:
-
-```bash
-composer test -- --testsuite unit
-composer test -- --testsuite database
-```
-
-Composer installs test dependencies in `.test-vendor`. The suite uses mock SSH sessions, temporary files, and in-memory SQLite. It runs independently of LibreNMS.
 
 ## Screen Shots
 ![](screenshots/screen-shot-01.png)
