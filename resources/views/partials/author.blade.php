@@ -7,7 +7,7 @@
         <strong>Version</strong> : {{ $info['ver'] }}<br>
         <strong>Buy Me Coffee</strong> : <a href="https://buymeacoffee.com" target="_blank"><img
                 src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
-        <strong>Funding</strong> : <a href="https://github.com/daryl-peterson" target="_blank">GitHub</a><br>
+        
 
 
     </p>
