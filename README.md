@@ -9,7 +9,11 @@ This project is open-source under the [MIT License](LICENSE). If this plugin hel
 [![Buy Me A Coffee](https://shields.io)](https://buymeacoffee.com/daryl.peterson)
 
 
-## Install and configure
+## 1. Adding from Packagist
+./lnms plugin:add daryl-peterson/librenms-device-backups dev-main
+
+
+## 2. Adding a Local / Unreleased Plugin
 
 Use PHP 8.4 or later with ZIP and AES-256 support, Phar, and zlib. Run the following commands from the LibreNMS installation directory as the LibreNMS service user.
 
