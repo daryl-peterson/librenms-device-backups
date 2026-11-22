@@ -1,16 +1,5 @@
 <?php
 
-/**
- * LibreNMS Device Backups Plugin Controller
- *
- * @package     librenms-device-backups
- * @author      Daryl Peterson <@gmail.com>
- * @copyright   Copyright (c) 2026, Daryl Peterson
- * @license     https://opensource.org MIT License
- * @link        https://github.com/daryl-peterson/
- * @since       0.0.1
- */
-
 namespace DRP\DeviceBackups\Controllers;
 
 /**
@@ -112,9 +101,14 @@ class PluginController extends Controller {
 
         $recipient = $validator->validated()['backup_report_email'];
         try {
-            $sent = Mail::send($recipient, 'Device Backups test email',
+            $sent = Mail::send(
+                $recipient,
+                'Device Backups test email',
                 'This is a test of the LibreNMS mail settings used for scheduled Device Backups reports.',
-                false, false, false);
+                false,
+                false,
+                false
+            );
         } catch (Throwable) {
             $sent = false;
         }
@@ -200,19 +194,31 @@ class PluginController extends Controller {
 
         try {
             if (!PluginDb::migrateSettings($database)) {
-                return $this->settingsResponse($request, true, 'error',
-                    'Migrations did not complete. Try again after any running migrations finish.');
+                return $this->settingsResponse(
+                    $request,
+                    true,
+                    'error',
+                    'Migrations did not complete. Try again after any running migrations finish.'
+                );
             }
 
             if (!$settings->markMigrationsComplete($saved['database_connection'], PluginDb::migrationVersion())) {
-                return $this->settingsResponse($request, true, 'error',
-                    'Could not confirm migrations for the saved settings. Reload Settings and run migrations again.');
+                return $this->settingsResponse(
+                    $request,
+                    true,
+                    'error',
+                    'Could not confirm migrations for the saved settings. Reload Settings and run migrations again.'
+                );
             }
         } catch (Throwable $e) {
             $code = $e instanceof PDOException ? ' (database error ' . ($e->errorInfo[1] ?? $e->getCode()) . ')' : '';
             Log::error('Device Backups migrations did not complete' . $code . '.');
-            return $this->settingsResponse($request, true, 'error',
-                'Could not complete database setup. Check the backup database user’s schema permissions and the LibreNMS log.');
+            return $this->settingsResponse(
+                $request,
+                true,
+                'error',
+                'Could not complete database setup. Check the backup database user’s schema permissions and the LibreNMS log.'
+            );
         }
 
         PluginDb::clearConnectionChecks();

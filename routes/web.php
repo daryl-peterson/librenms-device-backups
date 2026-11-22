@@ -10,7 +10,6 @@
  * @since       1.0.0
  */
 
-
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -21,27 +20,11 @@ use DRP\DeviceBackups\Controllers\BackupController;
 use DRP\DeviceBackups\Controllers\BackupScheduleController;
 use DRP\DeviceBackups\Controllers\DeviceSshController;
 use DRP\DeviceBackups\Controllers\PluginController;
-use DRP\DeviceBackups\Controllers\ActionController;
 use const DRP\DeviceBackups\PLUGIN_NAME;
 
 $plugin = PLUGIN_NAME;
 
 
-/**
- * Upload route
- */
-//if (PluginDb::isReady()) {
-/*
-Route::middleware(['web'])
-    ->get("plugin/$plugin/import", [PluginController::class, 'import'])
-    ->name("$plugin.import");
-
-
-
-Route::middleware(['web'])
-    ->get("plugin/$plugin/export", [PluginController::class, 'export'])
-    ->name("$plugin.export");
-*/
 
 /**
  * Settings route
@@ -50,18 +33,29 @@ Route::middleware(['web'])
     ->get("plugin/settings/$plugin", [PluginController::class, 'settings'])
     ->name("$plugin.settings");
 
+/**
+ * Test connection route
+ */
 Route::middleware(['web', 'auth'])
     ->post("plugin/settings/$plugin/test-connection", [PluginController::class, 'testConnection'])
     ->name("$plugin.test-connection");
 
+/**
+ * Test email route
+ */
 Route::middleware(['web', 'auth'])
     ->post("plugin/settings/$plugin/test-email", [PluginController::class, 'testReportEmail'])
     ->name("$plugin.test-email");
-
+/**
+ * Save settings route
+ */
 Route::middleware(['web', 'auth'])
     ->post("plugin/settings/$plugin/save", [PluginController::class, 'saveSettings'])
     ->name("$plugin.save-settings");
 
+/**
+ * Backups routes
+ */
 Route::middleware(['web', 'auth'])->prefix("plugin/$plugin/backups")->name("$plugin.backups.")->group(function (): void {
     Route::get('/', [BackupController::class, 'status'])->name('status');
     Route::get('/devices', [BackupController::class, 'devices'])->name('devices');
@@ -79,12 +73,3 @@ Route::middleware(['web', 'auth'])->prefix("plugin/$plugin/backups")->name("$plu
     Route::get('/devices/{device}/download/{backup}', [BackupController::class, 'download'])
         ->whereNumber(['device', 'backup'])->name('download');
 });
-
-/**
- * Action route
- */
-/*
-Route::middleware(['web'])
-    ->post("plugin/$plugin/action", [ActionController::class, 'handle'])
-    ->name("$plugin.action");
-*/

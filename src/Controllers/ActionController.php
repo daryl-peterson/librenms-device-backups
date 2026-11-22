@@ -1,17 +1,5 @@
 <?php
 
-
-/**
- * Action Controller
- *
- * @package     librenms-device-backups
- * @author      Daryl Peterson <@gmail.com>
- * @copyright   Copyright (c) 2026, Daryl Peterson
- * @license     https://opensource.org MIT License
- * @link        https://github.com/daryl-peterson/
- * @since       0.0.1
- */
-
 namespace DRP\DeviceBackups\Controllers;
 
 /**
@@ -47,10 +35,10 @@ use DRP\DeviceBackups\TraitValidateAdmin;
 use const DRP\DeviceBackups\PLUGIN_NAME;
 
 /**
- * Action Controller
+ * LibreNMS Device Backups Action Controller.
  *
- * @package     device-importer
- * @author      Daryl Peterson <@gmail.com>
+ * @package     librenms-device-backups
+ * @author      Daryl Peterson <daryl.peterson@gmail.com>
  * @copyright   Copyright (c) 2026, Daryl Peterson
  * @license     https://opensource.org MIT License
  * @link        https://github.com/daryl-peterson/
