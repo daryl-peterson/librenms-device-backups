@@ -20,6 +20,16 @@ use Illuminate\Support\Facades\Schema;
 use LibreNMS\Util\Mail;
 use Throwable;
 
+/**
+ * LibreNMS Device Backups Plugin Run Backups Console Command.
+ *
+ * @package     librenms-device-backups
+ * @author      Daryl Peterson <daryl.peterson@gmail.com>
+ * @copyright   Copyright (c) 2026, Daryl Peterson
+ * @license     https://opensource.org MIT License
+ * @link        https://github.com/daryl-peterson/
+ * @since       0.0.1
+ */
 final class RunBackups extends Command {
     protected $signature = 'device-backups:run
         {device? : Back up only this LibreNMS device ID}
@@ -38,7 +48,8 @@ final class RunBackups extends Command {
         $id = $this->positiveInt($this->argument('device'));
         $request = $this->positiveInt($this->option('request'));
         if (($this->argument('device') !== null && $id === null)
-            || ($this->option('request') !== null && ($request === null || $id === null || $this->option('check')))) {
+            || ($this->option('request') !== null && ($request === null || $id === null || $this->option('check')))
+        ) {
             $this->error('Enter a valid device ID and manual request ID.');
             return self::FAILURE;
         }
@@ -85,9 +96,9 @@ final class RunBackups extends Command {
 
         $targets = Device::query()
             ->where('disabled', false)
-            ->whereHas('attribs', fn ($query) => $query->where('attrib_type', Target::ATTRIBUTE))
-            ->with(['attribs' => fn ($query) => $query->where('attrib_type', Target::ATTRIBUTE)])
-            ->when($id !== null, fn ($query) => $query->whereKey($id));
+            ->whereHas('attribs', fn($query) => $query->where('attrib_type', Target::ATTRIBUTE))
+            ->with(['attribs' => fn($query) => $query->where('attrib_type', Target::ATTRIBUTE)])
+            ->when($id !== null, fn($query) => $query->whereKey($id));
         if (!$targets->exists()) {
             throw new BackupFailure('No enabled, enrolled devices matched. Enroll a device through Device Backups SSH Status or device-backups:configure.');
         }
@@ -230,10 +241,12 @@ final class RunBackups extends Command {
 
     private function deviceSettings(Device $device): array {
         $settings = Target::get($device);
-        if (!in_array($settings['profile'] ?? null, Target::profiles(), true)
+        if (
+            !in_array($settings['profile'] ?? null, Target::profiles(), true)
             || !SshConnection::validFingerprint($settings['fingerprint'] ?? '')
             || ($settings['user'] ?? '') === '' || ($settings['password'] ?? '') === ''
-            || !filter_var($settings['port'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]])) {
+            || !filter_var($settings['port'] ?? 0, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 65535]])
+        ) {
             throw new BackupFailure('Invalid device backup enrollment.');
         }
         SshConnection::host($device->hostname);
@@ -278,5 +291,4 @@ final class RunBackups extends Command {
 
         return $result;
     }
-
 }

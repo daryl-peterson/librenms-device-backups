@@ -9,6 +9,16 @@ use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * LibreNMS Device Backups Store Utility.
+ *
+ * @package     librenms-device-backups
+ * @author      Daryl Peterson <daryl.peterson@gmail.com>
+ * @copyright   Copyright (c) 2026, Daryl Peterson
+ * @license     https://opensource.org MIT License
+ * @link        https://github.com/daryl-peterson/
+ * @since       0.0.1
+ */
 final class BackupStore {
     private const CHUNK_SIZE = 48 * 1024;
     private Connection $db;
@@ -53,7 +63,9 @@ final class BackupStore {
                         break;
                     }
                     $this->db->table('device_backup_chunks')->insert([
-                        'result_id' => $id, 'sequence' => $sequence++, 'payload' => $chunk,
+                        'result_id' => $id,
+                        'sequence' => $sequence++,
+                        'payload' => $chunk,
                     ]);
                     $bytes += strlen($chunk);
                     hash_update($hash, $chunk);
@@ -85,9 +97,9 @@ final class BackupStore {
 
     public function results(?int $device = null, ?int $run = null, ?string $status = null): Paginator {
         return $this->resultDetails()
-            ->when($device !== null, fn (Builder $query) => $query->where('results.device_id', $device))
-            ->when($run !== null, fn (Builder $query) => $query->where('results.run_id', $run))
-            ->when($status !== null, fn (Builder $query) => $query->where('results.status', $status))
+            ->when($device !== null, fn(Builder $query) => $query->where('results.device_id', $device))
+            ->when($run !== null, fn(Builder $query) => $query->where('results.run_id', $run))
+            ->when($status !== null, fn(Builder $query) => $query->where('results.status', $status))
             ->orderByDesc('results.id')->simplePaginate(25)->withQueryString();
     }
 
@@ -102,7 +114,7 @@ final class BackupStore {
 
     public function findDownload(int $device, ?int $id = null): ?object {
         return $this->downloadable()->where('results.device_id', $device)
-            ->when($id !== null, fn (Builder $query) => $query->where('results.id', $id))
+            ->when($id !== null, fn(Builder $query) => $query->where('results.id', $id))
             ->orderByDesc('results.id')->first();
     }
 

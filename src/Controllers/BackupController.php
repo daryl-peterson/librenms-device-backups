@@ -19,6 +19,16 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * LibreNMS Device Backup Controller.
+ *
+ * @package     librenms-device-backups
+ * @author      Daryl Peterson <daryl.peterson@gmail.com>
+ * @copyright   Copyright (c) 2026, Daryl Peterson
+ * @license     https://opensource.org MIT License
+ * @link        https://github.com/daryl-peterson/
+ * @since       0.0.1
+ */
 final class BackupController extends Controller {
     use TraitValidateAdmin;
 
@@ -49,7 +59,7 @@ final class BackupController extends Controller {
         $store = $this->store();
         $search = $this->deviceSearch($request->query('search'));
         $inventory = Target::inventory($search)->withExists([
-            'attribs as backup_enrolled' => fn ($query) => $query->where('attrib_type', Target::ATTRIBUTE),
+            'attribs as backup_enrolled' => fn($query) => $query->where('attrib_type', Target::ATTRIBUTE),
         ])->simplePaginate(25)->withQueryString();
 
         try {
@@ -89,8 +99,10 @@ final class BackupController extends Controller {
     }
 
     private function backupDatabaseSettings(): RedirectResponse {
-        return redirect()->route('device-backups.settings')->with('error',
-            'Could not load the backup database. Test and save the connection in Settings, then run migrations.');
+        return redirect()->route('device-backups.settings')->with(
+            'error',
+            'Could not load the backup database. Test and save the connection in Settings, then run migrations.'
+        );
     }
 
     public function start(Request $request, Device $device, ManualBackupRequests $requests): RedirectResponse {

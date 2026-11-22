@@ -5,6 +5,16 @@ namespace DRP\DeviceBackups\Backup;
 use PharData;
 use phpseclib4\Net\SSH2;
 
+/**
+ * LibreNMS Device Backups Collector.
+ *
+ * @package     librenms-device-backups
+ * @author      Daryl Peterson <daryl.peterson@gmail.com>
+ * @copyright   Copyright (c) 2026, Daryl Peterson
+ * @license     https://opensource.org MIT License
+ * @link        https://github.com/daryl-peterson/
+ * @since       0.0.1
+ */
 final class Collector {
     private const OUTPUT_LIMIT = 16 * 1024 ** 2;
     private const EXPORT_LIMIT = 64 * 1024 ** 2;
@@ -172,8 +182,17 @@ final class Collector {
         }
         if (str_contains($profile, 'dns')) {
             array_push($paths, 'etc/named.conf', 'var/named');
-            array_push($optional, 'etc/named*', 'etc/rndc.conf', 'etc/rndc.key', 'etc/sysconfig/named', 'etc/logrotate.d/named',
-                'etc/systemd/system/named.service', 'etc/systemd/system/named.service.d', 'usr/lib/systemd/system/named.service');
+            array_push(
+                $optional,
+                'etc/named*',
+                'etc/rndc.conf',
+                'etc/rndc.key',
+                'etc/sysconfig/named',
+                'etc/logrotate.d/named',
+                'etc/systemd/system/named.service',
+                'etc/systemd/system/named.service.d',
+                'usr/lib/systemd/system/named.service'
+            );
         }
         if ($profile === 'dns-old') {
             array_push($optional, 'etc/init.d/named', 'usr/local/sbin/named', 'usr/local/sbin/rndc', 'usr/local/sbin/named-checkconf', 'usr/local/sbin/named-checkzone');

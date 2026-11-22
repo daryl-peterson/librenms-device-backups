@@ -4,10 +4,22 @@ namespace DRP\DeviceBackups\Backup;
 
 use ZipArchive;
 
+/**
+ * LibreNMS Device Backups Archives Utility.
+ *
+ * @package     librenms-device-backups
+ * @author      Daryl Peterson <daryl.peterson@gmail.com>
+ * @copyright   Copyright (c) 2026, Daryl Peterson
+ * @license     https://opensource.org MIT License
+ * @link        https://github.com/daryl-peterson/
+ * @since       0.0.1
+ */
 final class Archives {
     public static function verifyAvailable(): void {
-        if (!class_exists(ZipArchive::class) || !ZipArchive::isEncryptionMethodSupported(ZipArchive::EM_AES_256)
-            || !ZipArchive::isEncryptionMethodSupported(ZipArchive::EM_AES_256, false)) {
+        if (
+            !class_exists(ZipArchive::class) || !ZipArchive::isEncryptionMethodSupported(ZipArchive::EM_AES_256)
+            || !ZipArchive::isEncryptionMethodSupported(ZipArchive::EM_AES_256, false)
+        ) {
             throw new BackupFailure('PHP ZIP with AES-256 encryption and decryption is required.');
         }
     }
@@ -77,5 +89,4 @@ final class Archives {
             }
         }
     }
-
 }

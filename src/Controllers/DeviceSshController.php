@@ -24,6 +24,16 @@ use phpseclib4\Exception\BaseException as SshException;
 use phpseclib4\Net\SSH2;
 use Throwable;
 
+/**
+ * LibreNMS Device Backups SSH Controller.
+ *
+ * @package     librenms-device-backups
+ * @author      Daryl Peterson <daryl.peterson@gmail.com>
+ * @copyright   Copyright (c) 2026, Daryl Peterson
+ * @license     https://opensource.org MIT License
+ * @link        https://github.com/daryl-peterson/
+ * @since       0.0.1
+ */
 final class DeviceSshController extends Controller {
     use TraitValidateAdmin;
 
@@ -35,7 +45,7 @@ final class DeviceSshController extends Controller {
         $this->authorizePlugin();
         $search = $this->search($request->query('search'));
         $devices = Target::inventory($search)->with([
-            'attribs' => fn ($query) => $query->whereIn('attrib_type', [Target::ATTRIBUTE, DeviceSshStatus::ATTRIBUTE]),
+            'attribs' => fn($query) => $query->whereIn('attrib_type', [Target::ATTRIBUTE, DeviceSshStatus::ATTRIBUTE]),
         ])->simplePaginate(25)->withQueryString();
 
         return view('device-backups::ssh-status', ['devices' => $devices, 'search' => $search]);
@@ -117,7 +127,7 @@ final class DeviceSshController extends Controller {
             ? redirect()->route('device-backups.backups.ssh.index', array_filter([
                 'search' => $this->search($request->input('search')),
                 'page' => max(1, (int) filter_var($request->input('page'), FILTER_VALIDATE_INT)),
-            ], static fn ($value) => $value !== '' && $value !== 1))
+            ], static fn($value) => $value !== '' && $value !== 1))
             : $this->editRedirect($device);
 
         $settings = $this->saved($device);
@@ -146,7 +156,7 @@ final class DeviceSshController extends Controller {
             $ssh = new SSH2(SshConnection::host($device->hostname), $port, 5);
 
             return response()->json(['fingerprint' => SshConnection::fingerprint($ssh)]);
-        } catch (BackupFailure|SshException) {
+        } catch (BackupFailure | SshException) {
             return response()->json(['message' => 'Could not read the host key. Check the device address and SSH port.'], 422);
         }
     }

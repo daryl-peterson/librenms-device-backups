@@ -5,6 +5,16 @@ namespace DRP\DeviceBackups\Backup;
 use Cron\CronExpression;
 use DateTimeInterface;
 
+/**
+ * LibreNMS Device Backups Schedule Utility.
+ *
+ * @package     librenms-device-backups
+ * @author      Daryl Peterson <daryl.peterson@gmail.com>
+ * @copyright   Copyright (c) 2026, Daryl Peterson
+ * @license     https://opensource.org MIT License
+ * @link        https://github.com/daryl-peterson/
+ * @since       0.0.1
+ */
 final readonly class BackupSchedule {
     public const SETTINGS_KEY = 'backup_schedule';
 
@@ -24,7 +34,8 @@ final readonly class BackupSchedule {
         public array $days,
         public string $time,
         public string $timezone,
-    ) {}
+    ) {
+    }
 
     public static function fromSettings(array $settings): self {
         $schedule = $settings[self::SETTINGS_KEY] ?? null;
