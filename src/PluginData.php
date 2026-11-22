@@ -39,6 +39,7 @@ use DRP\DeviceBackups\PluginCache;
  */
 class PluginData {
 
+
     /**
      * Constructor.
      *

@@ -131,7 +131,6 @@ class PluginProvider extends ServiceProvider {
             $pluginManager->publishHook($pluginName, MenuEntryHookInterface::class, Menu::class);
             $pluginManager->publishHook($pluginName, SinglePageHook::class, Page::class);
             $pluginManager->publishHook($pluginName, SettingsHookInterface::class, Settings::class);
-
             $pluginManager->publishHook($pluginName, DeviceOverviewHook::class, DeviceOverview::class);
 
             PluginDb::initConfig();

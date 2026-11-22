@@ -11,6 +11,7 @@ use DRP\DeviceBackups\Backup\ManualBackupRequests;
 use DRP\DeviceBackups\Backup\Target;
 use DRP\DeviceBackups\PluginDb;
 use Illuminate\Database\QueryException;
+use DRP\DeviceBackups\PluginData;
 
 final class DeviceOverview extends DeviceOverviewHook {
     public function authorize(?Authenticatable $user, Device $device): bool {
@@ -21,6 +22,7 @@ final class DeviceOverview extends DeviceOverviewHook {
         $latest = null;
         $manualRequest = null;
         $unavailable = false;
+        $pluginData = PluginData::getInfo();
         try {
             $latest = (new BackupStore())->findDownload($device->getKey());
             $requests = new ManualBackupRequests();
@@ -30,6 +32,7 @@ final class DeviceOverview extends DeviceOverviewHook {
         }
 
         return [
+            'title' => $pluginData['title'],
             'device' => $device,
             'latest' => $latest,
             'unavailable' => $unavailable,
