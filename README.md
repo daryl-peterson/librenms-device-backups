@@ -4,7 +4,7 @@ Device Backups is a LibreNMS plugin for backing up network device configurations
 
 ## License & Support
 
-This project is open-source under the [MIT License](LICENSE). If this plugin helps simplify your LibreNMS device backups, consider supporting future development via [GitHub Sponsors](https://github.com).
+This project is open-source under the [MIT License](LICENSE). If this plugin helps simplify your LibreNMS device backups, consider supporting future development via [GitHub Sponsors](https://github.com/sponsors/daryl-peterson).
 
 [![Buy Me A Coffee](https://shields.io)](https://buymeacoffee.com/daryl.peterson)
 
