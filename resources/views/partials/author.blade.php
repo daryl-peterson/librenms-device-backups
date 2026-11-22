@@ -6,9 +6,13 @@
         <strong>Author</strong> : {{ $info['author'] }}<br>
         <strong>Version</strong> : {{ $info['ver'] }}<br>
         <strong style="margin-bottom: 10px">Buy Me Coffee</strong> :<br>
-        <a href="https://www.buymeacoffee.com/daryl.peterson" target="_blank">
-            <img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174">
-        </a>
+        <span style="display:block">
+            <strong style="margin-bottom: 10px">Buy Me Coffee </strong> :
+            <a href="https://www.buymeacoffee.com/daryl.peterson" target="_blank" style="display:block; margin-top:6px">
+                <img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41"
+                    width="174">
+            </a>
+        </span>
 
 
 
