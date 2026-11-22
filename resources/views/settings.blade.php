@@ -51,59 +51,24 @@
                         placeholder="Leave blank to keep the current password">
                 </div>
             </fieldset>
-            <fieldset>
-                <legend style="border: 0px; font-size: 1.2em; font-weight: bold; margin-bottom: .5em;">SFTP Settings
-                </legend>
-
-                <div class="form-group">
-                    <label for="sftpserver">SFTP Server</label>
-                    <input type="text" class="form-control" id="sftpserver" name="sftpserver"
-                        value="{{ old('sftpserver', $info['settings']['sftpserver'] ?? '') }}" placeholder="sftp_server">
-                </div>
-
-                <div class="form-group">
-                    <label for="sftpport">SFTP Port</label>
-                    <input type="number" class="form-control" id="sftpport" name="sftpport" min="1" max="65535"
-                        value="{{ old('sftpport', $info['settings']['sftpport'] ?? 22) }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="sftpuser">SFTP User</label>
-                    <input type="text" class="form-control" id="sftpuser" name="sftpuser"
-                        value="{{ old('sftpuser', $info['settings']['sftpuser'] ?? '') }}" placeholder="sftp_user">
-                </div>
-
-                <div class="form-group">
-                    <label for="sftppassword">SFTP Password</label>
-                    <input type="password" class="form-control" id="sftppassword" name="sftppassword"
-                        autocomplete="new-password" placeholder="Leave blank to keep the current password">
-                </div>
-                <div class="form-group">
-                    <label for="sftpfingerprint">Host Key Fingerprint</label>
-                    <input type="text" class="form-control" id="sftpfingerprint" name="sftpfingerprint"
-                        value="{{ old('sftpfingerprint', $info['settings']['sftpfingerprint'] ?? '') }}"
-                        placeholder="SHA256:…">
-                </div>
-            </fieldset>
 
             <div class="form-group">
                 <label for="backup_report_email">Backup Report Email</label>
                 <input type="email" class="form-control" id="backup_report_email" name="backup_report_email"
-                    value="{{ old('backup_report_email', $info['settings']['backup_report_email'] ?? '') }}">
+                    value="{{ old('backup_report_email', $info['settings']['backup_report_email'] ?? '') }}"
+                    aria-describedby="backup-report-email-help">
+                <p class="help-block" id="backup-report-email-help">Receives one summary after each scheduled backup run. Leave blank to disable reports.</p>
             </div>
 
             <button type="submit" class="btn btn-primary pull-right">Test and Save Settings</button>
-            <button id="device-backups-sftptest" type="submit" class="btn btn-primary pull-right"
-                style="margin-right: 10px" data-connection-test="SFTP"
-                data-test-fields="_token sftpserver sftpport sftpuser sftppassword sftpfingerprint" formnovalidate
-                formaction="{{ route("$plugin.test-sftp") }}">Test SFTP</button>
-
             <button id="device-backups-dbtest" type="submit" class="btn btn-primary pull-right"
-                style="margin-right: 10px" data-connection-test="database"
+                style="margin-right: 10px" data-test-progress="Testing database connection…"
                 data-test-fields="_token database host port username password" formnovalidate
                 formaction="{{ route("$plugin.test-connection") }}">Test DB</button>
-
-
+            <button type="submit" class="btn btn-default pull-right"
+                style="margin-right: 10px" data-test-progress="Sending test email…"
+                data-test-fields="_token backup_report_email" formnovalidate
+                formaction="{{ route("$plugin.test-email") }}">Send Test Email</button>
         </form>
 
         <form method="POST" action="{{ route("$plugin.save-settings") }}">
@@ -118,8 +83,8 @@
         document.getElementById('device-backups-settings')?.addEventListener('submit', async (event) => {
             const messages = document.getElementById('device-backups-flash-messages');
             const button = event.submitter;
-            const service = button?.dataset.connectionTest;
-            if (!service || !messages) {
+            const progress = button?.dataset.testProgress;
+            if (!progress || !messages) {
                 return;
             }
 
@@ -137,7 +102,7 @@
             try {
                 result.className = 'alert alert-info';
                 messages.replaceChildren(result);
-                result.textContent = `Testing ${service} connection…`;
+                result.textContent = progress;
 
                 const form = new FormData(event.currentTarget);
                 const body = new FormData();
@@ -155,12 +120,12 @@
                 });
                 const data = await response.json();
                 result.className = response.ok ? 'alert alert-success' : 'alert alert-danger';
-                result.textContent = data.message ?? `Could not run the ${service} test. Try again.`;
+                result.textContent = data.message ?? 'Could not complete the test.';
             } catch {
                 result.className = 'alert alert-danger';
                 result.textContent = controller.signal.aborted ?
-                    `The ${service} test timed out. Try again.` :
-                    `Could not run the ${service} test. Try again.`;
+                    'The test request timed out.' :
+                    'Could not complete the test.';
             } finally {
                 clearTimeout(timeout);
                 button.disabled = false;

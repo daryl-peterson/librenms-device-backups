@@ -2,7 +2,7 @@
 
 @section('content')
     @component('device-backups::layouts.panel')
-        <h3>Backup Schedule</h3>
+        <div style="font-size: 1.1em; font-weight: 600; margin-bottom: .5em; color:#333">Backup Schedule</div>
         @include('device-backups::layouts.flash-messages')
 
         @if ($errors->any())
@@ -20,6 +20,8 @@
                 Scheduled backups are paused.
             @endif
         </p>
+        <p>Set the recipient for scheduled run summaries under <a href="{{ route('device-backups.settings') }}#backup_report_email">Backup
+                Report Email</a>.</p>
 
         <form method="POST" action="{{ route('device-backups.backups.schedule.update') }}">
             @csrf
@@ -32,8 +34,8 @@
                 </label>
             </div>
 
-            <fieldset class="form-group">
-                <legend>Days to Run</legend>
+            <fieldset class="form-group" style="margin-top: 1em">
+                <legend style="font-size: 1.1em; font-weight: 600; margin-bottom: .5em; border: none;">Days to Run</legend>
                 @foreach ($weekdays as $day => $label)
                     <label class="checkbox-inline">
                         <input type="checkbox" name="days[]" value="{{ $day }}" @checked(in_array($day, (array) old('days', $schedule->days)))>

@@ -55,8 +55,8 @@ Route::middleware(['web', 'auth'])
     ->name("$plugin.test-connection");
 
 Route::middleware(['web', 'auth'])
-    ->post("plugin/settings/$plugin/test-sftp", [PluginController::class, 'testSftp'])
-    ->name("$plugin.test-sftp");
+    ->post("plugin/settings/$plugin/test-email", [PluginController::class, 'testReportEmail'])
+    ->name("$plugin.test-email");
 
 Route::middleware(['web', 'auth'])
     ->post("plugin/settings/$plugin/save", [PluginController::class, 'saveSettings'])

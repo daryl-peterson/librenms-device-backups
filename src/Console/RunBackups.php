@@ -24,6 +24,7 @@ final class RunBackups extends Command {
     protected $signature = 'device-backups:run
         {device? : Back up only this LibreNMS device ID}
         {--check : Validate local settings and enrollment without contacting devices}
+        {--scheduled : Run all enrolled devices and send the scheduled report}
         {--request= : Process the specified queued manual backup request}';
 
     protected $description = 'Collect and verify encrypted backups from enrolled LibreNMS devices';
@@ -39,6 +40,10 @@ final class RunBackups extends Command {
         if (($this->argument('device') !== null && $id === null)
             || ($this->option('request') !== null && ($request === null || $id === null || $this->option('check')))) {
             $this->error('Enter a valid device ID and manual request ID.');
+            return self::FAILURE;
+        }
+        if ($id !== null && $this->option('scheduled')) {
+            $this->error('Scheduled backups must run without a device ID.');
             return self::FAILURE;
         }
 
@@ -94,7 +99,9 @@ final class RunBackups extends Command {
         Archives::verifyAvailable();
         $storage = storage_path('app/private/device-backups');
         $reserve = max(0, (int) config('device-backups.reserve_bytes'));
-        $recipient = (string) (PluginData::getSettings()['backup_report_email'] ?? '');
+        $recipient = $this->option('scheduled')
+            ? (string) (PluginData::getSettings()['backup_report_email'] ?? '')
+            : null;
         $schema = Schema::connection(PluginDb::getDbConnection());
         foreach (['device_backup_runs', 'device_backup_results', 'device_backup_chunks'] as $table) {
             if (!$schema->hasTable($table)) {
@@ -114,7 +121,7 @@ final class RunBackups extends Command {
             }
             Archives::checkSpace(is_dir($storage) ? $storage : storage_path(), $reserve);
             $this->info("$count device(s) enrolled. Backup database tables are available.");
-            if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            if ($recipient !== null && !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
                 $this->warn('Set a backup report email address in Device Backups Settings.');
             }
             return self::SUCCESS;
@@ -157,9 +164,9 @@ final class RunBackups extends Command {
         }
     }
 
-    private function collect(BackupStore $store, Builder $targets, string $work, #[\SensitiveParameter] string $password, int $reserve, string $recipient, ?int $request): int {
+    private function collect(BackupStore $store, Builder $targets, string $work, #[\SensitiveParameter] string $password, int $reserve, ?string $recipient, ?int $request): int {
         $run = $request ?? $store->start();
-        $lines = [];
+        $failures = [];
         $success = 0;
         $failure = 0;
 
@@ -190,20 +197,24 @@ final class RunBackups extends Command {
             $detail = $result['status'] === 'success'
                 ? "OK $name (device {$result['device_id']}, backup ID $id)"
                 : "FAILED $name (device {$result['device_id']}) - {$result['error']}";
-            $lines[] = $detail;
             $this->line($detail);
             if ($result['status'] === 'success') {
                 $success++;
             } else {
+                $failures[] = $detail;
                 $failure++;
             }
         }
 
         $failed = $failure > 0 || $success === 0;
-        $emailStatus = 'not_configured';
-        if (filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-            $subject = ($failed ? '[ACTION REQUIRED]' : '[SUCCESS]') . " Device Backups run $run";
-            $body = "Device Backups run $run\nSucceeded: $success\nFailed: $failure\n\n" . implode("\n", $lines);
+        $emailStatus = $recipient === null ? 'not_sent' : 'not_configured';
+        if ($recipient !== null && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+            $title = "Device Backups scheduled run #$run";
+            $subject = ($failed ? '[ACTION REQUIRED]' : '[SUCCESS]') . " $title";
+            $body = "$title\nCompleted: $success\nFailed: $failure";
+            if ($failures !== []) {
+                $body .= "\n\nFailed devices\n" . implode("\n", $failures);
+            }
             try {
                 $emailStatus = Mail::send($recipient, $subject, $body, false, false, false) ? 'sent' : 'failed';
             } catch (Throwable) {

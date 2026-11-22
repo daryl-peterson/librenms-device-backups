@@ -82,12 +82,6 @@ class PluginSettings {
         ];
     }
 
-    public static function sftpPassword(array $settings): ?string {
-        return isset($settings['encrypted_sftp_password'])
-            ? Crypt::decryptString($settings['encrypted_sftp_password'])
-            : ($settings['sftppassword'] ?? null);
-    }
-
     public function saveConnections(array $database, array $formSettings): bool {
         return $this->updateSettings(function (array $settings) use ($database, $formSettings): array {
             if (!self::sameDatabase($settings, $database)) {
@@ -98,17 +92,9 @@ class PluginSettings {
             }
             unset($settings['password']);
 
-            foreach (['sftpserver', 'sftpport', 'sftpuser', 'sftpfingerprint', 'backup_report_email'] as $key) {
-                if (array_key_exists($key, $formSettings)) {
-                    $settings[$key] = $formSettings[$key];
-                }
+            if (array_key_exists('backup_report_email', $formSettings)) {
+                $settings['backup_report_email'] = $formSettings['backup_report_email'];
             }
-
-            $sftpPassword = $formSettings['sftppassword'] ?? $settings['sftppassword'] ?? null;
-            if ($sftpPassword !== null) {
-                $settings['encrypted_sftp_password'] = Crypt::encryptString($sftpPassword);
-            }
-            unset($settings['sftppassword']);
 
             return $settings;
         });

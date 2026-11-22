@@ -7,7 +7,6 @@
         "device backups",
         "backups",
         "device management",
-        "sftp",
         "snmp"
     ],
     "type": "package",

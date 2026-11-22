@@ -30,16 +30,13 @@ use Illuminate\View\View;
  * Plugin imports.
  */
 
-use DRP\DeviceBackups\Backup\BackupFailure;
-use DRP\DeviceBackups\Backup\SshConnection;
 use DRP\DeviceBackups\Log;
 use DRP\DeviceBackups\TraitHidePrivates;
 use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\PluginDb;
 use DRP\DeviceBackups\PluginSettings;
+use LibreNMS\Util\Mail;
 use PDOException;
-use phpseclib4\Exception\BaseException as SftpException;
-use phpseclib4\Net\SFTP;
 use DRP\DeviceBackups\TraitValidateAdmin;
 use Throwable;
 use const DRP\DeviceBackups\PLUGIN_NAME;
@@ -103,63 +100,28 @@ class PluginController extends Controller {
         return $this->handleSettings($request, false);
     }
 
-    public function testSftp(Request $request): JsonResponse|RedirectResponse {
+    public function testReportEmail(Request $request): JsonResponse|RedirectResponse {
         $this->validateAdmin();
 
-        $validator = Validator::make($request->all(), $this->sftpRules(true), [], [
-            'sftpserver' => 'SFTP server',
-            'sftpport' => 'SFTP port',
-            'sftpuser' => 'SFTP user',
-            'sftppassword' => 'SFTP password',
-            'sftpfingerprint' => 'SFTP host key fingerprint',
-        ]);
+        $validator = Validator::make($request->only('backup_report_email'), [
+            'backup_report_email' => ['required', 'email', 'max:254'],
+        ], attributes: ['backup_report_email' => 'Backup Report Email']);
         if ($validator->fails()) {
             return $this->settingsResponse($request, false, 'error', $validator->errors()->first());
         }
 
-        $input = $validator->validated();
+        $recipient = $validator->validated()['backup_report_email'];
         try {
-            $sftp = new SFTP(SshConnection::host($input['sftpserver']), (int) ($input['sftpport'] ?? 22), 5);
-            $fingerprint = SshConnection::fingerprint($sftp);
-            $expected = $input['sftpfingerprint'] ?? null;
-            if ($expected === null) {
-                return $this->settingsResponse($request, false, 'error',
-                    "The server presented $fingerprint. Verify it with your SFTP administrator, then enter it in Host Key Fingerprint and test again.");
-            }
-            if (!hash_equals($expected, $fingerprint)) {
-                return $this->settingsResponse($request, false, 'error', 'The SFTP host key does not match the entered fingerprint.');
-            }
-
-            $password = $input['sftppassword'] ?? PluginSettings::sftpPassword(PluginData::getSettings());
-            if ($password === null || $password === '') {
-                return $this->settingsResponse($request, false, 'error', 'Enter the SFTP password.');
-            }
-            if (!$sftp->login($input['sftpuser'], $password)) {
-                return $this->settingsResponse($request, false, 'error', 'The SFTP server rejected the username or password.');
-            }
-
-            $sftp->pwd();
-
-            return $this->settingsResponse($request, false, 'success', 'Connected to the SFTP server successfully.');
-        } catch (DecryptException) {
-            return $this->settingsResponse($request, false, 'error', 'The saved SFTP password could not be read. Enter the password and test again.');
-        } catch (BackupFailure $e) {
-            return $this->settingsResponse($request, false, 'error', $e->getMessage());
-        } catch (SftpException) {
-            return $this->settingsResponse($request, false, 'error', 'Could not complete the SFTP connection. Check the server, port, and SFTP access.');
+            $sent = Mail::send($recipient, 'Device Backups test email',
+                'This is a test of the LibreNMS mail settings used for scheduled Device Backups reports.',
+                false, false, false);
+        } catch (Throwable) {
+            $sent = false;
         }
-    }
 
-    private function sftpRules(bool $testing): array {
-        $presence = $testing ? 'required' : 'nullable';
-
-        return [
-            'sftpserver' => [$presence, 'string', 'max:255', 'regex:/\A[a-zA-Z0-9_.:-]+\z/'],
-            'sftpport' => ['nullable', 'integer', 'between:1,65535'],
-            'sftpuser' => [$presence, 'string', 'max:255'],
-            'sftppassword' => ['nullable', 'string'],
-            'sftpfingerprint' => ['nullable', 'string', 'regex:/\ASHA256:[a-zA-Z0-9+\/]{43}\z/'],
-        ];
+        return $sent
+            ? $this->settingsResponse($request, false, 'success', "Test email sent to $recipient.")
+            : $this->settingsResponse($request, false, 'error', 'Could not send the test email. Check the LibreNMS mail settings.');
     }
 
     public function saveSettings(Request $request): RedirectResponse {
@@ -181,7 +143,7 @@ class PluginController extends Controller {
             'password' => ['nullable', 'string'],
         ];
         if ($save) {
-            $rules += $this->sftpRules(false) + ['backup_report_email' => ['nullable', 'email', 'max:254']];
+            $rules['backup_report_email'] = ['nullable', 'email', 'max:254'];
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -275,7 +237,7 @@ class PluginController extends Controller {
 
         $redirect = redirect()->route("$this->plugin.settings")->with($status, $message);
         if (!$save || $status === 'error') {
-            $fields = ['database', 'host', 'port', 'username', 'sftpserver', 'sftpport', 'sftpuser', 'sftpfingerprint', 'backup_report_email'];
+            $fields = ['database', 'host', 'port', 'username', 'backup_report_email'];
             $redirect->withInput(array_filter($request->only($fields), 'is_scalar'));
         }
 

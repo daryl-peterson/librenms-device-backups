@@ -6,6 +6,8 @@ Device Backups is a LibreNMS plugin for backing up network device configurations
 
 This project is open-source under the [MIT License](LICENSE). If this plugin helps simplify your LibreNMS device backups, consider supporting future development via [GitHub Sponsors](https://github.com).
 
+[![Buy Me A Coffee](https://shields.io)](https://buymeacoffee.com/daryl.peterson)
+
 
 ## Install and configure
 
@@ -26,11 +28,11 @@ During installation, Laravel's package discovery clears a route cache that is mi
 1. Open **Device Backups → Settings** and enter the credentials for the separate MySQL or MariaDB database. Click **Test and Save Settings**. The plugin saves the credentials after it verifies the connection.
 2. Click **Run Migrations** to apply the pending Device Backups migrations to the saved database. The database user needs permission to create and alter the plugin tables and indexes. This completes database setup and enables backup functions.
 3. Set `DEVICE_BACKUPS_ARCHIVE_PASSWORD` in LibreNMS's environment. Keep it with your recovery credentials. If you change it later, older ZIPs still need their original password.
-4. Optionally set **Backup Report Email** to receive results through LibreNMS's configured mail backend. The email lists successful and failed devices and includes backup IDs for successful captures.
+4. Optionally enter a recipient under **Device Backups → Settings → Backup Report Email** and click **Test and Save Settings**. LibreNMS sends one email after each scheduled backup run. It identifies the run, shows the completed and failed counts, and lists each failed device with its error. Manual backup results are available in **Status**.
+
+Click **Send Test Email** to check delivery to the address currently in the field before saving it.
 
 After changing the database connection, click **Test and Save Settings**, then **Run Migrations**. If an update adds a migration, run it from Settings before resuming backups.
-
-Settings also has a **Test SFTP** action for checking a configured SFTP destination. Backup archives are stored in the backup database.
 
 ## Enroll a device and check SSH
 

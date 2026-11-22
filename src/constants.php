@@ -15,7 +15,7 @@ namespace DRP\DeviceBackups;
 const PLUGIN_NAME           = 'device-backups';
 const PLUGIN_TITLE          = 'Device Backups';
 const PLUGIN_AUTHOR         = 'Daryl Peterson';
-const PLUGIN_VER            = 'v0.2.10-alpha';
+const PLUGIN_VER            = 'v0.2.11-alpha';
 const PLUGIN_PATH           = 'vendor/daryl-peterson/librenms-device-backups/';
 
 /**

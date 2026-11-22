@@ -80,7 +80,7 @@ class PluginProvider extends ServiceProvider {
     public function register(): void {
         require_once __DIR__ . '/constants.php';
         $this->mergeConfigFrom(dirname(__DIR__) . '/config/device-backups.php', 'device-backups');
-        \Illuminate\Foundation\Http\Middleware\TrimStrings::except(['sftppassword', 'ssh_password', 'enable_password']);
+        \Illuminate\Foundation\Http\Middleware\TrimStrings::except(['ssh_password', 'enable_password']);
 
         if ($this->app->runningInConsole()) {
             $this->app['events']->listen(CommandFinished::class, $this->clearStaleRouteCache(...));
@@ -152,7 +152,7 @@ class PluginProvider extends ServiceProvider {
                         $schedule = BackupSchedule::fromSettings($settings);
                         if ($schedule->enabled) {
                             $this->app->make(Schedule::class)
-                                ->command('device-backups:run')
+                                ->command('device-backups:run', ['--scheduled'])
                                 ->cron($schedule->expression())
                                 ->timezone($schedule->timezone);
                         }

@@ -2,13 +2,12 @@
 
 @section('content')
     @component('device-backups::layouts.panel', ['wide' => true])
-        <h3>Device SSH Status</h3>
+        <div style="font-size: 1.1em; font-weight: 600; margin-bottom: .5em;">Device SSH Status</div>
         @include('device-backups::layouts.flash-messages')
 
         <form method="GET" action="{{ route('device-backups.backups.ssh.index') }}" class="form-inline">
             <label for="backup-ssh-search">Find a Device</label>
-            <input id="backup-ssh-search" name="search" class="form-control" value="{{ $search }}"
-                placeholder="Hostname or device ID">
+            <input id="backup-ssh-search" name="search" class="form-control" value="{{ $search }}" placeholder="Hostname or device ID">
             <button type="submit" class="btn btn-default">Search</button>
             @if ($search !== '')
                 <a class="btn btn-link" href="{{ route('device-backups.backups.ssh.index') }}">Clear Search</a>
@@ -41,7 +40,8 @@
                             <td>@include('device-backups::partials.ssh-state')</td>
                             <td>{{ $check['checked_at'] ?? '—' }}</td>
                             <td>
-                                <a class="btn btn-default btn-sm" href="{{ route('device-backups.backups.ssh.edit', ['device' => $device->getKey()]) }}">
+                                <a class="btn btn-default btn-sm"
+                                    href="{{ route('device-backups.backups.ssh.edit', ['device' => $device->getKey()]) }}">
                                     {{ $enrolled ? 'Edit SSH' : 'Configure SSH' }}
                                 </a>
                                 @if ($enrolled)
@@ -57,7 +57,9 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4">No matching devices.</td></tr>
+                        <tr>
+                            <td colspan="4">No matching devices.</td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
