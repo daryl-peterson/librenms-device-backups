@@ -15,6 +15,13 @@ use ZipArchive;
  * @since       0.0.1
  */
 final class Archives {
+    /**
+     * Verify that the required ZIP capabilities are available.
+     *
+     * @throws BackupFailure If the required ZIP capabilities are not available.
+     *
+     * @since 0.0.1
+     */
     public static function verifyAvailable(): void {
         if (
             !class_exists(ZipArchive::class) || !ZipArchive::isEncryptionMethodSupported(ZipArchive::EM_AES_256)
@@ -24,6 +31,16 @@ final class Archives {
         }
     }
 
+    /**
+     * Check if there is enough free space in the given directory.
+     *
+     * @param string $root The root directory to check.
+     * @param int $reserve The minimum required free space in bytes.
+     *
+     * @throws BackupFailure If the free space is below the reserve.
+     *
+     * @since 0.0.1
+     */
     public static function checkSpace(string $root, int $reserve): void {
         $free = disk_free_space($root);
         if ($free === false || $free < $reserve) {
@@ -31,6 +48,20 @@ final class Archives {
         }
     }
 
+    /**
+     * Create an encrypted ZIP archive of the given source file.
+     *
+     * @param string $target The target ZIP file path.
+     * @param string $source The source file to include in the ZIP.
+     * @param string $member The name of the file inside the ZIP archive.
+     * @param string $password The password for AES-256 encryption.
+     *
+     * @return string The SHA-256 checksum of the created ZIP archive.
+     *
+     * @throws BackupFailure If the ZIP creation or verification fails.
+     *
+     * @since 0.0.1
+     */
     public static function zip(string $target, string $source, string $member, #[\SensitiveParameter] string $password): string {
         $partial = $target . '.partial';
         $zip = new ZipArchive();

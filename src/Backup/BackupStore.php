@@ -27,10 +27,26 @@ final class BackupStore {
         $this->db = DB::connection(PluginDb::getDbConnection());
     }
 
+    /**
+     * Start a new backup run.
+     *
+     * @return int The ID of the newly started run.
+     *
+     * @since 0.0.1
+     */
     public function start(): int {
         return $this->db->table('device_backup_runs')->insertGetId(['started_at' => now('UTC'), 'status' => 'running']);
     }
 
+    /**
+     * Finish a backup run.
+     *
+     * @param int $run The ID of the run to finish.
+     * @param bool $failed Whether the run failed.
+     * @param string $emailStatus The email status for the run.
+     *
+     * @since 0.0.1
+     */
     public function finish(int $run, bool $failed, string $emailStatus): void {
         $this->db->table('device_backup_runs')->where('id', $run)->update([
             'finished_at' => now('UTC'),
@@ -39,6 +55,15 @@ final class BackupStore {
         ]);
     }
 
+    /**
+     * Record the result of a backup run.
+     *
+     * @param array $result The result data to record.
+     * @param string|null $archive The path to the encrypted archive, if any.
+     * @return int The ID of the recorded result.
+     *
+     * @since 0.0.1
+     */
     public function record(array $result, ?string $archive = null): int {
         return $this->db->transaction(function () use ($result, $archive): int {
             $id = $this->db->table('device_backup_results')->insertGetId($result);
@@ -80,11 +105,25 @@ final class BackupStore {
             return $id;
         });
     }
-
+    /**
+     * Find a backup run by its ID.
+     *
+     * @param int $id The ID of the run to find.
+     * @return object|null The run object if found, null otherwise.
+     *
+     * @since 0.0.1
+     */
     public function findRun(int $id): ?object {
         return $this->db->table('device_backup_runs')->where('id', $id)->first();
     }
 
+    /**
+     * Get a paginated list of backup runs.
+     *
+     * @return Paginator
+     *
+     * @since 0.0.1
+     */
     public function runs(): Paginator {
         $counts = $this->db->table('device_backup_results')
             ->whereColumn('run_id', 'device_backup_runs.id');
@@ -95,6 +134,16 @@ final class BackupStore {
             ->orderByDesc('id')->simplePaginate(10, ['*'], 'runs_page')->withQueryString();
     }
 
+    /**
+     * Get a paginated list of backup results.
+     *
+     * @param int|null $device The device ID to filter by.
+     * @param int|null $run The run ID to filter by.
+     * @param string|null $status The status to filter by.
+     * @return Paginator
+     *
+     * @since 0.0.1
+     */
     public function results(?int $device = null, ?int $run = null, ?string $status = null): Paginator {
         return $this->resultDetails()
             ->when($device !== null, fn(Builder $query) => $query->where('results.device_id', $device))
@@ -103,6 +152,14 @@ final class BackupStore {
             ->orderByDesc('results.id')->simplePaginate(25)->withQueryString();
     }
 
+    /**
+     * Get the latest backup attempts for the given devices.
+     *
+     * @param array $devices The list of device IDs.
+     * @return Collection
+     *
+     * @since 0.0.1
+     */
     public function latestAttempts(array $devices): Collection {
         $latest = $this->db->table('device_backup_results')
             ->selectRaw('max(id) as id')
@@ -112,23 +169,56 @@ final class BackupStore {
         return $this->resultDetails()->whereIn('results.id', $latest)->get()->keyBy('device_id');
     }
 
+    /**
+     * Find a downloadable backup for the given device and optional result ID.
+     *
+     * @param int $device The device ID.
+     * @param int|null $id The result ID, if any.
+     * @return object|null The downloadable backup object if found, null otherwise.
+     *
+     * @since 0.0.1
+     */
     public function findDownload(int $device, ?int $id = null): ?object {
         return $this->downloadable()->where('results.device_id', $device)
             ->when($id !== null, fn(Builder $query) => $query->where('results.id', $id))
             ->orderByDesc('results.id')->first();
     }
 
+    /**
+     * Get the details of backup results.
+     *
+     * @return Builder
+     *
+     * @since 0.0.1
+     */
     private function resultDetails(): Builder {
         return $this->db->table('device_backup_results as results')
             ->join('device_backup_runs as runs', 'runs.id', '=', 'results.run_id')
             ->select('results.*', 'runs.started_at as run_started_at');
     }
 
+    /**
+     * Get the query builder for downloadable backup results.
+     *
+     * @return Builder
+     *
+     * @since 0.0.1
+     */
     private function downloadable(): Builder {
         return $this->resultDetails()->where('results.status', 'success')
             ->whereNotNull('results.sha256')->where('results.archive_bytes', '>', 0);
     }
 
+    /**
+     * Export a downloadable backup to the specified path.
+     *
+     * @param int $id The result ID of the backup to export.
+     * @param string $path The path to export the backup to.
+     *
+     * @throws BackupFailure If the export fails.
+     *
+     * @since 0.0.1
+     */
     public function export(int $id, string $path): void {
         $result = $this->downloadable()->where('results.id', $id)->first();
         if (!$result) {
@@ -153,7 +243,14 @@ final class BackupStore {
         }
     }
     /**
-     * @param resource $stream
+     * Copy the verified archive to the given stream.
+     *
+     * @param object $result The backup result object.
+     * @param resource $stream The stream to copy the archive to.
+     *
+     * @throws BackupFailure If the copy or verification fails.
+     *
+     * @since 0.0.1
      */
     public function copyVerifiedArchive(object $result, $stream): void {
         $hash = hash_init('sha256');

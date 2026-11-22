@@ -9,6 +9,17 @@ use Illuminate\Database\QueryException;
 use phpseclib4\Exception\BaseException as SshException;
 use phpseclib4\Net\SSH2;
 
+/**
+ * LibreNMS Device Backups SSH Status.
+ * Manages and records the SSH connection status for devices.
+ *
+ * @package     librenms-device-backups
+ * @author      Daryl Peterson <daryl.peterson@gmail.com>
+ * @copyright   Copyright (c) 2026, Daryl Peterson
+ * @license     https://opensource.org MIT License
+ * @link        https://github.com/daryl-peterson/
+ * @since       0.0.1
+ */
 final class DeviceSshStatus {
     public const ATTRIBUTE = 'device_backups_ssh_status';
 
@@ -20,17 +31,37 @@ final class DeviceSshStatus {
         'invalid_settings' => 'Invalid SSH settings',
     ];
 
+    /**
+     * Get the SSH status for the given device.
+     *
+     * @param Device $device
+     * @return array|null
+     *
+     * @since 0.0.1
+     */
     public static function get(Device $device): ?array {
         $revision = Target::revision($device);
         $check = json_decode((string) $device->getAttrib(self::ATTRIBUTE), true);
-        if ($revision === null || !is_array($check) || ($check['revision'] ?? null) !== $revision
-            || !isset(self::LABELS[$check['status'] ?? ''], $check['checked_at'])) {
+        if (
+            $revision === null || !is_array($check) || ($check['revision'] ?? null) !== $revision
+            || !isset(self::LABELS[$check['status'] ?? ''], $check['checked_at'])
+        ) {
             return null;
         }
 
         return $check;
     }
 
+    /**
+     * Attempt to establish an SSH connection to the given device using the provided settings.
+     *
+     * @param Device $device
+     * @param array $settings
+     * @param int $timeout
+     * @return SSH2
+     *
+     * @since 0.0.1
+     */
     public static function connect(Device $device, #[\SensitiveParameter] array $settings, int $timeout = 10): SSH2 {
         $status = 'connection_failed';
         try {
@@ -49,13 +80,21 @@ final class DeviceSshStatus {
         } catch (SshFailure $e) {
             $status = $e->status;
             throw $e;
-        } catch (BackupFailure|SshException) {
+        } catch (BackupFailure | SshException) {
             throw new SshFailure('connection_failed', 'Could not complete the SSH connection. Check the device address, port, and SSH access.');
         } finally {
             self::record($device, $status);
         }
     }
-
+    /**
+     * Record the SSH connection status for the given device.
+     *
+     * @param Device $device
+     * @param string $status
+     * @return void
+     *
+     * @since 0.0.1
+     */
     private static function record(Device $device, string $status): void {
         $revision = Target::revision($device);
         if ($revision === null) {

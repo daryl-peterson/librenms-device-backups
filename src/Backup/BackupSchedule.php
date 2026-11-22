@@ -37,6 +37,14 @@ final readonly class BackupSchedule {
     ) {
     }
 
+    /**
+     * Create a BackupSchedule instance from the given settings array.
+     *
+     * @param array $settings
+     * @return self
+     *
+     * @since 0.0.1
+     */
     public static function fromSettings(array $settings): self {
         $schedule = $settings[self::SETTINGS_KEY] ?? null;
         if (!is_array($schedule)) {
@@ -46,12 +54,26 @@ final readonly class BackupSchedule {
         return new self($schedule['enabled'], $schedule['days'], $schedule['time'], $schedule['timezone']);
     }
 
+    /**
+     * Get the cron expression for the backup schedule.
+     *
+     * @return string
+     *
+     * @since 0.0.1
+     */
     public function expression(): string {
         [$hours, $minutes] = explode(':', $this->time);
 
         return (int) $minutes . ' ' . (int) $hours . ' * * ' . implode(',', $this->days);
     }
 
+    /**
+     * Get the next run date for the backup schedule.
+     *
+     * @return DateTimeInterface|null
+     *
+     * @since 0.0.1
+     */
     public function nextRun(): ?DateTimeInterface {
         return $this->enabled
             ? (new CronExpression($this->expression()))->getNextRunDate('now', 0, false, $this->timezone)

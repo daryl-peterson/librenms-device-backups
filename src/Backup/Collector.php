@@ -7,6 +7,7 @@ use phpseclib4\Net\SSH2;
 
 /**
  * LibreNMS Device Backups Collector.
+ * Collects and captures device configurations for backups.
  *
  * @package     librenms-device-backups
  * @author      Daryl Peterson <daryl.peterson@gmail.com>
@@ -21,6 +22,17 @@ final class Collector {
     private const TAR_LIMIT = 256 * 1024 ** 2;
     private const CLI_ERRORS = '/^\h*(?:%\h*)?(?:invalid (?:input|command)|incomplete command|ambiguous command|unrecognized command|authorization failed|permission denied|ERROR:|MINOR:|MAJOR:|CRITICAL:)|--more--/im';
 
+    /**
+     * Capture the configuration of a device.
+     *
+     * @param SSH2 $ssh
+     * @param string $hostname
+     * @param array $settings
+     * @param string $path
+     * @throws BackupFailure
+     *
+     * @since 0.0.1
+     */
     public static function capture(SSH2 $ssh, string $hostname, #[\SensitiveParameter] array $settings, string $path): void {
         $profile = $settings['profile'];
         if (in_array($profile, Target::SWITCHES, true)) {
@@ -42,6 +54,18 @@ final class Collector {
         self::validateArchive($path, $profile);
     }
 
+    /**
+     * Get running configuration of a switch.
+     *
+     * @param SSH2 $ssh
+     * @param string $hostname
+     * @param string $profile
+     * @param string|null $enable
+     * @return string
+     * @throws BackupFailure
+     *
+     * @since 0.0.1
+     */
     private static function switchConfig(SSH2 $ssh, string $hostname, string $profile, #[\SensitiveParameter] ?string $enable): string {
         $stem = match ($profile) {
             'edgeswitch' => '\([^()\r\n]+\)\h*',
@@ -85,6 +109,17 @@ final class Collector {
         return self::validateConfig($profile, $hostname, $text) . "\n";
     }
 
+    /**
+     * Get the output of a shell command on the device.
+     *
+     * @param SSH2 $ssh
+     * @param string $command
+     * @param string $prompt
+     * @return string
+     * @throws BackupFailure
+     *
+     * @since 0.0.1
+     */
     private static function shellOutput(SSH2 $ssh, string $command, string $prompt): string {
         $ssh->write($command . "\n");
         $text = trim(preg_replace($prompt, '', self::readPrompt($ssh, $prompt, 180)));
@@ -92,6 +127,17 @@ final class Collector {
         return str_starts_with($text, $command . "\n") ? ltrim(substr($text, strlen($command))) : $text;
     }
 
+    /**
+     * Read the device CLI prompt until it matches the given pattern or times out.
+     *
+     * @param SSH2 $ssh
+     * @param string $pattern
+     * @param int $seconds
+     * @return string
+     * @throws BackupFailure
+     *
+     * @since 0.0.1
+     */
     private static function readPrompt(SSH2 $ssh, string $pattern, int $seconds = 30): string {
         $deadline = hrtime(true) + $seconds * 1_000_000_000;
         $output = '';
@@ -117,6 +163,17 @@ final class Collector {
         throw new BackupFailure('Timed out waiting for the device CLI prompt.');
     }
 
+    /**
+     * Validate the captured device configuration.
+     *
+     * @param string $profile
+     * @param string $hostname
+     * @param string $text
+     * @return string
+     * @throws BackupFailure
+     *
+     * @since 0.0.1
+     */
     private static function validateConfig(string $profile, string $hostname, string $text): string {
         if (strlen($text) < ($profile === 'edgeswitch' ? 20 : 1000) || preg_match(self::CLI_ERRORS, $text)) {
             throw new BackupFailure('Configuration was too short or contained CLI errors or pagination.');
@@ -140,6 +197,16 @@ final class Collector {
         return $text;
     }
 
+    /**
+     * Capture the configuration file from the device.
+     *
+     * @param SSH2 $ssh
+     * @param string $profile
+     * @param string $path
+     * @throws BackupFailure
+     *
+     * @since 0.0.1
+     */
     private static function captureDeviceFile(SSH2 $ssh, string $profile, string $path): void {
         $command = 'cat ' . Target::CONFIG_FILES[$profile];
         if ($profile === 'airfiber') {
@@ -168,6 +235,14 @@ final class Collector {
         }
     }
 
+    /**
+     * Generate the archive command for the given profile.
+     *
+     * @param string $profile
+     * @return string
+     *
+     * @since 0.0.1
+     */
     private static function archiveCommand(string $profile): string {
         if (str_ends_with($profile, '-helper')) {
             $helper = $profile === 'kea-helper' ? 'kea' : 'dhcp';
@@ -214,6 +289,17 @@ final class Collector {
         return '/bin/sh -c ' . escapeshellarg($script);
     }
 
+    /**
+     * Execute the remote export command and save the output to a local file.
+     *
+     * @param SSH2 $ssh
+     * @param string $command
+     * @param string $path
+     * @param int $limit
+     * @throws BackupFailure
+     *
+     * @since 0.0.1
+     */
     private static function remoteExport(SSH2 $ssh, string $command, string $path, int $limit = self::EXPORT_LIMIT): void {
         $file = fopen($path, 'wb');
         if (!$file) {
@@ -243,6 +329,15 @@ final class Collector {
         }
     }
 
+    /**
+     * Validate the integrity and contents of the archive.
+     *
+     * @param string $path
+     * @param string $profile
+     * @throws BackupFailure
+     *
+     * @since 0.0.1
+     */
     private static function validateArchive(string $path, string $profile): void {
         $stream = fopen($path, 'rb');
         $gzip = inflate_init(ZLIB_ENCODING_GZIP);
