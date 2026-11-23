@@ -37,10 +37,7 @@ class PluginController extends Controller {
     use TraitHidePrivates;
     use TraitValidateAdmin;
 
-    private array $info;
-    private string $plugin;
-    private PluginData $pluginData;
-
+    private PluginData $plugin;
 
     /**
      * Constructor.
@@ -48,17 +45,18 @@ class PluginController extends Controller {
      * @since 0.0.1
      */
     public function __construct() {
-        $this->pluginData = PluginData::getInstance();
-        $this->info = PluginData::getInfo();
-        $this->plugin = $this->pluginData->name;
+        $this->plugin = PluginData::getInstance();
     }
 
-
+    /**
+     * Plugin main page.
+     *
+     * @return View
+     * @since 0.0.1
+     */
     public function index(): View {
-        Log::error('Rendering plugin page.');
-        return view("$this->plugin::page");
+        return view("{$this->plugin->name}::page");
     }
-
 
     /**
      * Settings page.
@@ -69,25 +67,38 @@ class PluginController extends Controller {
     public function settings(): View {
         $this->validateAdmin();
 
-        $database = PluginSettings::databaseSettings($this->info['settings']);
+        $database = PluginSettings::databaseSettings($this->plugin->settings);
         unset($database['password']);
 
         $plugin = PluginData::getInstance();
         Log::error('PLUGIN', $plugin);
 
-        return view("$this->plugin::settings", [
-            'info' => $this->info,
-            'plugin' => $plugin,
+        return view("{$this->plugin->name}::settings", [
+            'plugin' => $this->plugin,
             'database' => $database,
-            'databaseSaved' => PluginSettings::hasSavedDatabase($plugin->settings),
-            'databaseReady' => PluginDb::isReady($plugin->settings),
+            'databaseSaved' => PluginSettings::hasSavedDatabase($this->plugin->settings),
+            'databaseReady' => PluginDb::isReady($this->plugin->settings),
         ]);
     }
 
+    /**
+     * Test database connection.
+     *
+     * @param Request $request
+     * @return JsonResponse|RedirectResponse
+     * @since 0.0.1
+     */
     public function testConnection(Request $request): JsonResponse|RedirectResponse {
         return $this->handleSettings($request, false);
     }
 
+    /**
+     * Test report email.
+     *
+     * @param Request $request
+     * @return JsonResponse|RedirectResponse
+     * @since 0.0.1
+     */
     public function testReportEmail(Request $request): JsonResponse|RedirectResponse {
         $this->validateAdmin();
 
@@ -117,6 +128,13 @@ class PluginController extends Controller {
             : $this->settingsResponse($request, false, 'error', 'Could not send the test email. Check the LibreNMS mail settings.');
     }
 
+    /**
+     * Save plugin settings.
+     *
+     * @param Request $request
+     * @return RedirectResponse
+     * @since 0.0.1
+     */
     public function saveSettings(Request $request): RedirectResponse {
         if ($request->input('database_action') === 'migrate') {
             return $this->migrateDatabase($request);
@@ -125,6 +143,14 @@ class PluginController extends Controller {
         return $this->handleSettings($request, true);
     }
 
+    /**
+     * Handle plugin settings.
+     *
+     * @param Request $request
+     * @param bool $save
+     * @return JsonResponse|RedirectResponse
+     * @since 0.0.1
+     */
     private function handleSettings(Request $request, bool $save): JsonResponse|RedirectResponse {
         $this->validateAdmin();
 
@@ -174,6 +200,13 @@ class PluginController extends Controller {
         return $this->settingsResponse($request, true, 'success', 'Database connection verified and settings saved.');
     }
 
+    /**
+     * Run database migrations for the plugin.
+     *
+     * @param Request $request
+     * @return RedirectResponse
+     * @since 0.0.1
+     */
     private function migrateDatabase(Request $request): RedirectResponse {
         $this->validateAdmin();
         $settings = new PluginSettings();
@@ -225,6 +258,13 @@ class PluginController extends Controller {
         return $this->settingsResponse($request, true, 'success', 'Migrations are up to date. Backup functions are enabled.');
     }
 
+    /**
+     * Get a human-readable database connection error message.
+     *
+     * @param PDOException $e
+     * @return string
+     * @since 0.0.1
+     */
     private function databaseConnectionError(PDOException $e): string {
         return match ((int) ($e->errorInfo[1] ?? $e->getCode())) {
             1045, 1698 => 'The database rejected the login. Check the username, password, and account authentication method.',
@@ -235,12 +275,23 @@ class PluginController extends Controller {
         };
     }
 
+    /**
+     * Generate a response for plugin settings actions.
+     *
+     * @param Request $request
+     * @param bool $save
+     * @param string $status
+     * @param string $message
+     * @return JsonResponse|RedirectResponse
+     * @since 0.0.1
+     */
     private function settingsResponse(Request $request, bool $save, string $status, string $message): JsonResponse|RedirectResponse {
+        $plugin = $this->plugin->name;
         if (!$save && $request->expectsJson()) {
             return response()->json(['message' => $message], $status === 'success' ? 200 : 422);
         }
 
-        $redirect = redirect()->route("$this->plugin.settings")->with($status, $message);
+        $redirect = redirect()->route("$plugin.settings")->with($status, $message);
         if (!$save || $status === 'error') {
             $fields = ['database', 'host', 'port', 'username', 'backup_report_email'];
             $redirect->withInput(array_filter($request->only($fields), 'is_scalar'));

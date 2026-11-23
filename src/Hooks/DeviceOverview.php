@@ -5,14 +5,17 @@ namespace DRP\DeviceBackups\Hooks;
 use App\Models\Device;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\QueryException;
 use App\Plugins\Hooks\DeviceOverviewHook;
 use DRP\DeviceBackups\Backup\BackupStore;
 use DRP\DeviceBackups\Backup\ManualBackupRequests;
 use DRP\DeviceBackups\Backup\Target;
 use DRP\DeviceBackups\PluginDb;
-use Illuminate\Database\QueryException;
 use DRP\DeviceBackups\PluginData;
 
+/**
+ * Device overview hook for the device backups plugin.
+ */
 final class DeviceOverview extends DeviceOverviewHook {
     public function authorize(?Authenticatable $user, Device $device): bool {
         return $user instanceof User && $user->hasRole('admin') && $user->can('view', $device) && PluginDb::isReady();
@@ -22,7 +25,7 @@ final class DeviceOverview extends DeviceOverviewHook {
         $latest = null;
         $manualRequest = null;
         $unavailable = false;
-        $pluginData = PluginData::getInfo();
+        $obj = PluginData::getInstance();
         try {
             $latest = (new BackupStore())->findDownload($device->getKey());
             $requests = new ManualBackupRequests();
@@ -32,7 +35,7 @@ final class DeviceOverview extends DeviceOverviewHook {
         }
 
         return [
-            'title' => $pluginData['title'],
+            'title' => $obj->title,
             'device' => $device,
             'latest' => $latest,
             'unavailable' => $unavailable,

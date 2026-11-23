@@ -23,6 +23,12 @@ use DRP\DeviceBackups\PluginCache;
 class PluginData {
     use TraitHidePrivates;
 
+    /**
+     * Plugin data array.
+     *
+     * @var array
+     * @version 0.0.1
+     */
     private array $data = [];
 
     private array $dbStatus = [
@@ -30,12 +36,15 @@ class PluginData {
         'error' => null
     ];
 
-
-
+    /**
+     * PluginData constructor.
+     *
+     * @version 0.0.1
+     */
     public function __construct() {
 
         $name = PLUGIN_NAME;
-        $settings = self::getSettings();
+        $settings = (array) self::getSettings();
         $isReady = PluginDb::isReady($settings);
 
         $this->data['name'] = $name;
@@ -65,45 +74,12 @@ class PluginData {
         return new self();
     }
 
-
     /**
-     * Get plugin information.
+     * Get plugin data array.
      *
-     * @return array{
-     *  name: '',
-     *  title: '',
-     *  author: '',
-     *  ver: '',
-     *  image: '',
-     *  settings: array,
-     *  dbStatus: array{
-     *    ready: bool,
-     *    error: string|null
-     *  },
-     * }
-     *
+     * @return array
      * @version 0.0.1
      */
-    public static function getInfo() {
-        $dbError = PluginCache::get(CACHE_DB_ERROR);
-        $obj = self::getInstance();
-
-        $result = array(
-            'name'     => $obj->data['name'],
-            'title'    => $obj->data['title'],
-            'author'   => $obj->data['author'],
-            'ver'      => $obj->data['ver'],
-            'image'    => $obj->data['author_image'],
-            'settings' => $obj->data['settings'],
-            'dbStatus'  => [
-                'ready' => !$dbError,
-                'error' => $dbError
-            ],
-        );
-
-        return $result;
-    }
-
     public static function getData(): array {
         $obj = self::getInstance();
         $dbError = PluginCache::get(CACHE_DB_ERROR);
