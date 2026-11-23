@@ -34,8 +34,11 @@ use DRP\DeviceBackups\TraitValidateAdmin;
 final class BackupController extends Controller {
     use TraitValidateAdmin;
 
+    private PluginData $plugin;
+
     public function __construct() {
         $this->middleware(RequireBackupDatabase::class);
+        $this->plugin = PluginData::getInstance();
     }
 
     /**
@@ -51,10 +54,12 @@ final class BackupController extends Controller {
         $run = filter_var($request->query('run'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
         $status = $request->query('status');
         $status = in_array($status, ['success', 'failed'], true) ? $status : null;
- 
+
+        $pname = $this->plugin->name;
+
         try {
-            return view('device-backups::backup-status', [
-                'plugin' => PluginData::getInstance(),
+            return view($pname . '::backup-status', [
+                'plugin' => $this->plugin,
                 'runs' => $store->runs(),
                 'results' => $store->results(run: $run, status: $status),
                 'run' => $run,
@@ -84,7 +89,10 @@ final class BackupController extends Controller {
 
         try {
             $deviceIds = $inventory->getCollection()->modelKeys();
-            return view('device-backups::backup-devices', [
+            $pname = $this->plugin->name;
+
+            return view($pname . '::backup-devices', [
+                'plugin' => $this->plugin,
                 'devices' => $inventory,
                 'attempts' => $store->latestAttempts($deviceIds),
                 'pendingRequests' => $requests->pendingFor($deviceIds),
@@ -113,7 +121,7 @@ final class BackupController extends Controller {
             $hostname = $model?->hostname ?? $store->latestAttempts([$device])->get($device)?->hostname;
             abort_if($hostname === null, 404);
 
-            return view('device-backups::backup-device', [
+            return view($pname . '::backup-device', [
                 'device' => $model,
                 'deviceId' => $device,
                 'hostname' => $hostname,
