@@ -4,13 +4,7 @@ namespace DRP\DeviceBackups\Controllers;
 
 use App\Models\Device;
 use Carbon\CarbonImmutable;
-use DRP\DeviceBackups\Backup\BackupFailure;
-use DRP\DeviceBackups\Backup\BackupStore;
-use DRP\DeviceBackups\Backup\ManualBackupRequests;
-use DRP\DeviceBackups\Backup\Target;
-use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
-use DRP\DeviceBackups\PluginData;
-use DRP\DeviceBackups\TraitValidateAdmin;
+
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,6 +12,14 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+
+use DRP\DeviceBackups\Backup\BackupFailure;
+use DRP\DeviceBackups\Backup\BackupStore;
+use DRP\DeviceBackups\Backup\ManualBackupRequests;
+use DRP\DeviceBackups\Backup\Target;
+use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
+use DRP\DeviceBackups\PluginData;
+use DRP\DeviceBackups\TraitValidateAdmin;
 
 /**
  * LibreNMS Device Backup Controller.
@@ -36,12 +38,20 @@ final class BackupController extends Controller {
         $this->middleware(RequireBackupDatabase::class);
     }
 
+    /**
+     * Display the status of backup runs.
+     *
+     * @param Request $request
+     * @return View|RedirectResponse
+     *
+     * @since 0.0.1
+     */
     public function status(Request $request): View|RedirectResponse {
         $store = $this->store();
         $run = filter_var($request->query('run'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
         $status = $request->query('status');
         $status = in_array($status, ['success', 'failed'], true) ? $status : null;
-
+ 
         try {
             return view('device-backups::backup-status', [
                 'plugin' => PluginData::getInstance(),
@@ -56,6 +66,15 @@ final class BackupController extends Controller {
         }
     }
 
+    /**
+     * Display the list of devices available for backup.
+     *
+     * @param Request $request
+     * @param ManualBackupRequests $requests
+     * @return View|RedirectResponse
+     *
+     * @since 0.0.1
+     */
     public function devices(Request $request, ManualBackupRequests $requests): View|RedirectResponse {
         $store = $this->store();
         $search = $this->deviceSearch($request->query('search'));
@@ -76,6 +95,15 @@ final class BackupController extends Controller {
         }
     }
 
+    /**
+     * Display the backup history for a specific device.
+     *
+     * @param int $device
+     * @param ManualBackupRequests $requests
+     * @return View|RedirectResponse
+     *
+     * @since 0.0.1
+     */
     public function history(int $device, ManualBackupRequests $requests): View|RedirectResponse {
         $store = $this->store();
         $model = $this->visibleDevice($device);
@@ -99,6 +127,13 @@ final class BackupController extends Controller {
         }
     }
 
+    /**
+     * Redirect to the backup settings page with an error message if the backup database cannot be loaded.
+     *
+     * @return RedirectResponse
+     *
+     * @since 0.0.1
+     */
     private function backupDatabaseSettings(): RedirectResponse {
         return redirect()->route('device-backups.settings')->with(
             'error',
@@ -106,6 +141,16 @@ final class BackupController extends Controller {
         );
     }
 
+    /**
+     * Start a backup for the specified device.
+     *
+     * @param Request $request
+     * @param Device $device
+     * @param ManualBackupRequests $requests
+     * @return RedirectResponse
+     *
+     * @since 0.0.1
+     */
     public function start(Request $request, Device $device, ManualBackupRequests $requests): RedirectResponse {
         $this->authorizePlugin();
         Gate::authorize('view', $device);
@@ -145,14 +190,40 @@ final class BackupController extends Controller {
         );
     }
 
+    /**
+     * Retrieve the latest backup for the specified device.
+     *
+     * @param int $device
+     * @return StreamedResponse
+     *
+     * @since 0.0.1
+     */
     public function latest(int $device): StreamedResponse {
         return $this->sendArchive($device);
     }
 
+    /**
+     * Download a specific backup for the specified device.
+     *
+     * @param int $device
+     * @param int $backup
+     * @return StreamedResponse
+     *
+     * @since 0.0.1
+     */
     public function download(int $device, int $backup): StreamedResponse {
         return $this->sendArchive($device, $backup);
     }
 
+    /**
+     * Send the backup archive for the specified device and backup.
+     *
+     * @param int $device
+     * @param int|null $backup
+     * @return StreamedResponse
+     *
+     * @since 0.0.1
+     */
     private function sendArchive(int $device, ?int $backup = null): StreamedResponse {
         $store = $this->store();
         $model = $this->visibleDevice($device);
@@ -194,6 +265,15 @@ final class BackupController extends Controller {
         ]);
     }
 
+    /**
+     * Generate the filename for the backup archive.
+     *
+     * @param Device|null $device
+     * @param object $result
+     * @return string
+     *
+     * @since 0.0.1
+     */
     private function archiveFilename(?Device $device, object $result): string {
         $name = trim((string) $device?->sysName);
         if ($name === '') {
@@ -212,21 +292,49 @@ final class BackupController extends Controller {
         return "$name.$date.zip";
     }
 
+    /**
+     * Sanitize the device search input.
+     *
+     * @param mixed $value
+     * @return string
+     *
+     * @since 0.0.1
+     */
     private function deviceSearch(mixed $value): string {
         return is_string($value) ? mb_substr(trim($value), 0, 128) : '';
     }
 
+    /**
+     * Get an instance of the backup store.
+     *
+     * @return BackupStore
+     *
+     * @since 0.0.1
+     */
     private function store(): BackupStore {
         $this->authorizePlugin();
 
         return new BackupStore();
     }
 
+    /**
+     * Authorize the plugin for the current user.
+     *
+     * @return void
+     *
+     * @since 0.0.1
+     */
     private function authorizePlugin(): void {
         $this->validateAdmin();
         abort_unless(PluginData::getPluginModel()?->plugin_active, 404);
     }
 
+    /**
+     * Retrieve a device if it is visible to the current user.
+     *
+     * @param integer $id
+     * @return Device|null
+     */
     private function visibleDevice(int $id): ?Device {
         $device = Device::find($id);
         if ($device !== null) {
