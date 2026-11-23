@@ -2,16 +2,8 @@
 
 namespace DRP\DeviceBackups\Controllers;
 
-/**
- * Standard PHP imports.
- */
-
 use Exception;
 use Throwable;
-
-/**
- * Laravel and Symfony imports.
- */
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,19 +12,14 @@ use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Queue;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-
-/**
- * Plugin imports.
- */
-
 use DRP\DeviceBackups\CsvProcessor;
 use DRP\DeviceBackups\Helper;
 use DRP\DeviceBackups\Jobs\ImportDeviceJob;
 use DRP\DeviceBackups\Log;
+use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\PluginSettings;
 use DRP\DeviceBackups\TraitHidePrivates;
 use DRP\DeviceBackups\TraitValidateAdmin;
-use const DRP\DeviceBackups\PLUGIN_NAME;
 
 /**
  * LibreNMS Device Backups Action Controller.
@@ -50,12 +37,16 @@ class ActionController extends Controller {
 
     private array $headersRequired = [];
     private array $map = [];
-    private PluginSettings $settings;
+
     private array $csvHeaders;
+
+    private PluginSettings $settings;
+    private PluginData $plugin;
 
     public function __construct() {
         $this->headersRequired = ['hostname', 'ip_address', 'os'];
         $this->settings = new PluginSettings();
+        $this->plugin = PluginData::getInstance();
         $this->csvHeaders = ['hostname', 'hardware', 'serial', 'os', 'snmpver', 'community', 'snmp_disable'];
     }
 
@@ -230,7 +221,7 @@ class ActionController extends Controller {
         $query = [];
 
         if (is_null($url)) {
-            $url = url('plugin/' . PLUGIN_NAME);
+            $url = url('plugin/' . $this->plugin->name);
         }
 
         if ($type !== null) {
