@@ -59,6 +59,13 @@ class Helper {
         return (int) $result->totalSeconds;
     }
 
+    /**
+     * Convert hours to seconds.
+     *
+     * @param int $value The number of hours.
+     * @return int The equivalent number of seconds.
+     * @since 0.0.1
+     */
     public static function hours(int $value): int {
         $result = hours($value);
 
@@ -78,7 +85,13 @@ class Helper {
         return (int) $result->totalSeconds;
     }
 
-
+    /**
+     * Get the current date and time.
+     *
+     * @param string $format The date format (default: 'Y-m-d H:i:s').
+     * @return string The formatted date and time.
+     * @since 0.0.1
+     */
     public static function getDate($format = 'Y-m-d H:i:s'): string {
         $date = new DateTimeImmutable();
         return $date->format($format);
