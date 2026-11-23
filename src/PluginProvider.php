@@ -13,29 +13,15 @@
 
 namespace DRP\DeviceBackups;
 
-/**
- * Standard PHP imports.
- */
-
 use Throwable;
-
-
-/**
- * Laravel and application imports.
- */
 
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\ServiceProvider;
 use LibreNMS\Interfaces\Plugins\Hooks\DeviceOverviewHook;
 use LibreNMS\Interfaces\Plugins\Hooks\MenuEntryHook as MenuEntryHookInterface;
-use LibreNMS\Interfaces\Plugins\Hooks\SettingsHook as SettingsHookInterface;
 use LibreNMS\Interfaces\Plugins\Hooks\SinglePageHook;
 use LibreNMS\Interfaces\Plugins\PluginManagerInterface;
-
-/**
- * Plugin imports.
- */
 
 use DRP\DeviceBackups\Backup\BackupSchedule;
 use DRP\DeviceBackups\Console\ConfigureBackup;
@@ -45,20 +31,9 @@ use DRP\DeviceBackups\Console\RunBackups;
 use DRP\DeviceBackups\Hooks\DeviceOverview;
 use DRP\DeviceBackups\Hooks\Menu;
 use DRP\DeviceBackups\Hooks\Page;
-use DRP\DeviceBackups\Hooks\Settings;
 use DRP\DeviceBackups\Log;
 use DRP\DeviceBackups\PluginDb;
 
-/**
- * Define the plugin path constant.
- */
-
-/*
-define(
-    'DEVICE_IMPORTER_PATH',
-    'vendor/daryl-peterson/librenms-device-importer/'
-);
-*/
 
 /**
  * LibreNMS Device Backups Plugin Service Provider.
@@ -130,7 +105,6 @@ class PluginProvider extends ServiceProvider {
             $pluginManager = $this->app->make(PluginManagerInterface::class);
             $pluginManager->publishHook($pluginName, MenuEntryHookInterface::class, Menu::class);
             $pluginManager->publishHook($pluginName, SinglePageHook::class, Page::class);
-            $pluginManager->publishHook($pluginName, SettingsHookInterface::class, Settings::class);
             $pluginManager->publishHook($pluginName, DeviceOverviewHook::class, DeviceOverview::class);
 
             PluginDb::initConfig();

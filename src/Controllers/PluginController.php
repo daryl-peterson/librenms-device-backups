@@ -2,9 +2,9 @@
 
 namespace DRP\DeviceBackups\Controllers;
 
-/**
- * Laravel imports.
- */
+
+use PDOException;
+use Throwable;
 
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\QueryException;
@@ -14,21 +14,14 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
-
-/**
- * Plugin imports.
- */
+use LibreNMS\Util\Mail;
 
 use DRP\DeviceBackups\Log;
 use DRP\DeviceBackups\TraitHidePrivates;
 use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\PluginDb;
 use DRP\DeviceBackups\PluginSettings;
-use LibreNMS\Util\Mail;
-use PDOException;
 use DRP\DeviceBackups\TraitValidateAdmin;
-use Throwable;
-use const DRP\DeviceBackups\PLUGIN_NAME;
 
 /**
  * LibreNMS Device Backups Plugin Controller
@@ -46,6 +39,7 @@ class PluginController extends Controller {
 
     private array $info;
     private string $plugin;
+    private PluginData $pluginData;
 
     /**
      * Constructor.
@@ -53,13 +47,14 @@ class PluginController extends Controller {
      * @since 0.0.1
      */
     public function __construct() {
+        $this->pluginData = PluginData::getInstance();
         $this->info = PluginData::getInfo();
-        $this->plugin = PLUGIN_NAME;
+        $this->plugin = $this->pluginData->name;
     }
 
 
     public function index(): View {
-
+        Log::error('Rendering plugin page.');
         return view("$this->plugin::page");
     }
 
@@ -78,7 +73,7 @@ class PluginController extends Controller {
 
         return view("$this->plugin::settings", [
             'info' => $this->info,
-            'plugin' => $this->plugin,
+            'plugin' => PluginData::getInstance(),
             'database' => $database,
             'databaseSaved' => PluginSettings::hasSavedDatabase($this->info['settings']),
             'databaseReady' => PluginDb::isReady($this->info['settings']),

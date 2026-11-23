@@ -3,10 +3,10 @@
 
 @section('content')
     <div id="device-backups-flash-messages" style="margin-top:-12px; padding-bottom: 1em;">
-        @includeIf("$plugin::layouts.flash-messages")
+        @includeIf($plugin->name . '::layouts.flash-messages')
     </div>
     @component('device-backups::layouts.panel')
-        @includeIf("$plugin::partials.author")
+        @includeIf($plugin->name . '::partials.author')
 
         @unless ($databaseReady)
             <p class="alert alert-info" role="status">
@@ -16,7 +16,7 @@
             </p>
         @endunless
 
-        <form id="device-backups-settings" method="POST" action="{{ route("$plugin.save-settings") }}">
+        <form id="device-backups-settings" method="POST" action="{{ route($plugin->name . '.save-settings') }}">
             @csrf
 
             <fieldset>
@@ -30,14 +30,14 @@
 
                 <div class="form-group">
                     <label for="host">Database Host</label>
-                    <input type="text" class="form-control" id="host" name="host"
-                        value="{{ old('host', $database['host']) }}" placeholder="database_host">
+                    <input type="text" class="form-control" id="host" name="host" value="{{ old('host', $database['host']) }}"
+                        placeholder="database_host">
                 </div>
 
                 <div class="form-group">
                     <label for="port">Database Port</label>
-                    <input type="text" class="form-control" id="port" name="port"
-                        value="{{ old('port', $database['port']) }}" placeholder="database_port">
+                    <input type="text" class="form-control" id="port" name="port" value="{{ old('port', $database['port']) }}"
+                        placeholder="database_port">
                 </div>
 
                 <div class="form-group">
@@ -57,24 +57,24 @@
                 <input type="email" class="form-control" id="backup_report_email" name="backup_report_email"
                     value="{{ old('backup_report_email', $info['settings']['backup_report_email'] ?? '') }}"
                     aria-describedby="backup-report-email-help">
-                <p class="help-block" id="backup-report-email-help">Receives one summary after each scheduled backup run. Leave blank to disable reports.</p>
+                <p class="help-block" id="backup-report-email-help">Receives one summary after each scheduled backup run. Leave blank to
+                    disable reports.</p>
             </div>
 
             <button type="submit" class="btn btn-primary pull-right">Test and Save Settings</button>
-            <button id="device-backups-dbtest" type="submit" class="btn btn-primary pull-right"
-                style="margin-right: 10px" data-test-progress="Testing database connection…"
-                data-test-fields="_token database host port username password" formnovalidate
-                formaction="{{ route("$plugin.test-connection") }}">Test DB</button>
-            <button type="submit" class="btn btn-default pull-right"
-                style="margin-right: 10px" data-test-progress="Sending test email…"
-                data-test-fields="_token backup_report_email" formnovalidate
-                formaction="{{ route("$plugin.test-email") }}">Send Test Email</button>
+            <button id="device-backups-dbtest" type="submit" class="btn btn-primary pull-right" style="margin-right: 10px"
+                data-test-progress="Testing database connection…" data-test-fields="_token database host port username password"
+                formnovalidate formaction="{{ route($plugin->name . '.test-connection') }}">Test DB</button>
+            <button type="submit" class="btn btn-default pull-right" style="margin-right: 10px" data-test-progress="Sending test email…"
+                data-test-fields="_token backup_report_email" formnovalidate formaction="{{ route($plugin->name . '.test-email') }}">Send
+                Test
+                Email</button>
         </form>
 
-        <form method="POST" action="{{ route("$plugin.save-settings") }}">
+        <form method="POST" action="{{ route($plugin->name . '.save-settings') }}">
             @csrf
-            <button type="submit" name="database_action" value="migrate" class="btn btn-default"
-                @disabled(!$databaseSaved)>Run Migrations</button>
+            <button type="submit" name="database_action" value="migrate" class="btn btn-default" @disabled(!$databaseSaved)>Run
+                Migrations</button>
         </form>
     @endcomponent
 @endsection

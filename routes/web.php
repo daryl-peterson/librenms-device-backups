@@ -11,47 +11,36 @@
  */
 
 use Illuminate\Support\Facades\Route;
-
-/**
- * Plugin imports.
- */
-
+use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\Controllers\BackupController;
 use DRP\DeviceBackups\Controllers\BackupScheduleController;
 use DRP\DeviceBackups\Controllers\DeviceSshController;
 use DRP\DeviceBackups\Controllers\PluginController;
-use const DRP\DeviceBackups\PLUGIN_NAME;
 
-$plugin = PLUGIN_NAME;
-
+$plugin = PluginData::getPluginName();
 
 
-/**
- * Settings route
- */
-Route::middleware(['web'])
-    ->get("plugin/settings/$plugin", [PluginController::class, 'settings'])
-    ->name("$plugin.settings");
 
 /**
- * Test connection route
+ * Settings routes
  */
-Route::middleware(['web', 'auth'])
-    ->post("plugin/settings/$plugin/test-connection", [PluginController::class, 'testConnection'])
-    ->name("$plugin.test-connection");
+Route::middleware(['web', 'auth', 'can:plugin.admin'])->group(function () use ($plugin): void {
+    Route::get("plugin/$plugin/settings", [PluginController::class, 'settings'])
+        ->name("$plugin.settings");
 
-/**
- * Test email route
- */
-Route::middleware(['web', 'auth'])
-    ->post("plugin/settings/$plugin/test-email", [PluginController::class, 'testReportEmail'])
-    ->name("$plugin.test-email");
-/**
- * Save settings route
- */
-Route::middleware(['web', 'auth'])
-    ->post("plugin/settings/$plugin/save", [PluginController::class, 'saveSettings'])
-    ->name("$plugin.save-settings");
+    // Test connection route
+    Route::post("plugin/$plugin/settings/test-connection", [PluginController::class, 'testConnection'])
+        ->name("$plugin.test-connection");
+
+    // Test email route
+    Route::post("plugin/$plugin/settings/test-email", [PluginController::class, 'testReportEmail'])
+        ->name("$plugin.test-email");
+
+    // Save settings route
+    Route::post("plugin/$plugin/settings/save", [PluginController::class, 'saveSettings'])
+        ->name("$plugin.save-settings");
+});
+
 
 /**
  * Backups routes
