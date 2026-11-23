@@ -1,19 +1,15 @@
-<div style="min-height: 100px;">
-    <img class="device-icon-header pull-left img-circle" style="vertical-align:middle; min-width:75px; min-height:75px"
-        src="{{ $info['image'] }}">
+<div style="display: flex; align-items: flex-start; margin-bottom: 15px;">
+    <img src="{{ $plugin->author_image }}" alt="{{ $plugin->author }}"
+        style="width: 110px; height: 110px; border-radius: 50%; margin-right: 15px; flex-shrink: 0;">
 
-    <p>
-        <strong>Author</strong> : {{ $info['author'] }}<br>
-        <strong>Version</strong> : {{ $info['ver'] }}<br>
-        <span style="display:block">
-            <strong style="margin-bottom: 10px">Buy Me Coffee </strong> :
-            <a href="https://www.buymeacoffee.com/daryl.peterson" target="_blank" style="display:block; margin-top:6px">
-                <img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41"
-                    width="174">
+    <div>
+        <strong>Author</strong> : {{ $plugin->author }}<br>
+        <strong>Version</strong> : {{ $plugin->version }}<br>
+        <div style="margin-top: 4px;">
+            <strong>Buy Me Coffee</strong> :
+            <a href="{{ $plugin->coffee_link }}" target="_blank" style="display: block; margin-top: 6px;">
+                <img src="{{ $plugin->coffee_image }}" alt="Buy Me A Coffee" height="41" width="174">
             </a>
-        </span>
-
-
-
-    </p>
+        </div>
+    </div>
 </div>

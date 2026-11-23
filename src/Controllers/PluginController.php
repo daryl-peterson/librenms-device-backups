@@ -41,6 +41,7 @@ class PluginController extends Controller {
     private string $plugin;
     private PluginData $pluginData;
 
+
     /**
      * Constructor.
      *
@@ -71,12 +72,15 @@ class PluginController extends Controller {
         $database = PluginSettings::databaseSettings($this->info['settings']);
         unset($database['password']);
 
+        $plugin = PluginData::getInstance();
+        Log::error('PLUGIN', $plugin);
+
         return view("$this->plugin::settings", [
             'info' => $this->info,
-            'plugin' => PluginData::getInstance(),
+            'plugin' => $plugin,
             'database' => $database,
-            'databaseSaved' => PluginSettings::hasSavedDatabase($this->info['settings']),
-            'databaseReady' => PluginDb::isReady($this->info['settings']),
+            'databaseSaved' => PluginSettings::hasSavedDatabase($plugin->settings),
+            'databaseReady' => PluginDb::isReady($plugin->settings),
         ]);
     }
 

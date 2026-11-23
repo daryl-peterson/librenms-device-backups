@@ -1,9 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace DRP\DeviceBackups;
 
 use App\Models\Plugin as PluginModel;
+use Illuminate\Support\Facades\Route;
 use DRP\DeviceBackups\Log;
 use DRP\DeviceBackups\PluginSettings;
 use DRP\DeviceBackups\PluginCache;
@@ -21,21 +23,44 @@ use DRP\DeviceBackups\PluginCache;
 class PluginData {
     use TraitHidePrivates;
 
-    private string $pvtName = PLUGIN_NAME;
-    private string $pvtTitle = PLUGIN_TITLE;
-    private string $pvtAuthor = PLUGIN_AUTHOR;
-    private string $pvtVer = PLUGIN_VER;
-    private string $pvtImage = 'https://avatars.githubusercontent.com/u/13834451?s=400&u=ff8417db6126da8d9ff82822ea0be5897ad744b3&v=4';
-    private array $pvtSettings = [];
+    private array $data = [];
+
     private array $dbStatus = [
         'ready' => false,
         'error' => null
     ];
 
+
+
     public function __construct() {
-        $this->pvtSettings = self::getSettings();
+
+        $name = PLUGIN_NAME;
+        $settings = self::getSettings();
+        $isReady = PluginDb::isReady($settings);
+
+        $this->data['name'] = $name;
+        $this->data['title'] = PLUGIN_TITLE;
+        $this->data['author'] = PLUGIN_AUTHOR;
+        $this->data['author_image'] = PLUGIN_AUTHOR_IMAGE;
+        $this->data['ver'] = PLUGIN_VER;
+
+        $this->data['settings'] = $settings;
+        $this->data['isDbReady'] = $isReady;
+        $this->data['menu'] = Route::has($name . '.backups.status')
+            ? $name . '.backups.status'
+            : $name . '.settings';
+        $this->data['hasMenuRoute'] = Route::has($this->data['menu']);
+
+        $this->data['coffee_link'] = 'https://www.buymeacoffee.com/daryl.peterson';
+        $this->data['coffee_image'] = 'https://cdn.buymeacoffee.com/buttons/default-orange.png';
     }
 
+    /**
+     * Get plugin instance.
+     *
+     * @return self
+     * @version 0.0.1
+     */
     public static function getInstance(): self {
         return new self();
     }
@@ -64,12 +89,12 @@ class PluginData {
         $obj = self::getInstance();
 
         $result = array(
-            'name'     => $obj->pvtName,
-            'title'    => $obj->pvtTitle,
-            'author'   => $obj->pvtAuthor,
-            'ver'      => $obj->pvtVer,
-            'image'    => $obj->pvtImage,
-            'settings' => $obj->pvtSettings,
+            'name'     => $obj->data['name'],
+            'title'    => $obj->data['title'],
+            'author'   => $obj->data['author'],
+            'ver'      => $obj->data['ver'],
+            'image'    => $obj->data['author_image'],
+            'settings' => $obj->data['settings'],
             'dbStatus'  => [
                 'ready' => !$dbError,
                 'error' => $dbError
@@ -84,16 +109,17 @@ class PluginData {
         $dbError = PluginCache::get(CACHE_DB_ERROR);
         $result = [
             'info' => [
-                'name'     => $obj->pvtName,
-                'title'    => $obj->pvtTitle,
-                'author'   => $obj->pvtAuthor,
-                'ver'      => $obj->pvtVer,
-                'image'    => $obj->pvtImage,
+                'name'     => $obj->data['name'],
+                'title'    => $obj->data['title'],
+                'author'   => $obj->data['author'],
+                'ver'      => $obj->data['ver'],
+                'image'    => $obj->data['author_image'],
                 'dbStatus'  => [
                     'ready' => !$dbError,
                     'error' => $dbError
                 ]
             ],
+            'dbIsReady' => $obj->data['isDbReady'],
             'settings' => self::getSettings()
         ];
         return $result;
@@ -155,7 +181,7 @@ class PluginData {
      * @version 0.0.1
      */
     public string $name {
-        get => $this->pvtName;
+        get => $this->data['name'];
     }
 
     /**
@@ -165,7 +191,7 @@ class PluginData {
      * @version 0.0.1
      */
     public string $title {
-        get => $this->pvtTitle;
+        get => $this->data['title'];
     }
     /**
      * Get plugin author.
@@ -174,7 +200,7 @@ class PluginData {
      * @version 0.0.1
      */
     public string $author {
-        get => $this->pvtAuthor;
+        get => $this->data['author'];
     }
     /**
      * Get plugin version.
@@ -183,7 +209,7 @@ class PluginData {
      * @version 0.0.1
      */
     public string $ver {
-        get => $this->pvtVer;
+        get => $this->data['ver'];
     }
     /**
      * Get plugin image.
@@ -191,9 +217,20 @@ class PluginData {
      * @return string
      * @version 0.0.1
      */
-    public string $image {
-        get => $this->pvtImage;
+    public string $author_image {
+        get => $this->data['author_image'];
     }
+
+    /**
+     * Get plugin menu route.
+     *
+     * @return string
+     * @version 0.0.1
+     */
+    public string | bool $menu {
+        get => $this->data['menu'];
+    }
+
     /**
      * Get plugin settings.
      *
@@ -201,6 +238,45 @@ class PluginData {
      * @version 0.0.1
      */
     public array $settings {
-        get => $this->pvtSettings;
+        get => $this->data['settings'];
+    }
+
+    /**
+     * Get plugin database readiness status.
+     *
+     * @return bool
+     * @version 0.0.1
+     */
+    public bool $isDbReady {
+        get => $this->data['isDbReady'];
+    }
+    /**
+     * Get plugin menu route availability.
+     *
+     * @return bool
+     * @version 0.0.1
+     */
+    public bool $hasMenuRoute {
+        get => $this->data['hasMenuRoute'];
+    }
+
+    /**
+     * Get plugin coffee link.
+     *
+     * @return string
+     * @version 0.0.1
+     */
+    public string $coffee_link {
+        get => $this->data['coffee_link'];
+    }
+
+    /**
+     * Get plugin coffee image.
+     *
+     * @return string
+     * @version 0.0.1
+     */
+    public string $coffee_image {
+        get => $this->data['coffee_image'];
     }
 }

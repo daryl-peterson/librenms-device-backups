@@ -27,7 +27,7 @@ class Page extends PageHook {
     public function data(): array {
 
         $return = PluginData::getData();
-        Log::debug('Page data', $return);
-        return $return;
+        Log::Error('Page data', $return);
+        return ['plugin' => PluginData::getInstance()];
     }
 }

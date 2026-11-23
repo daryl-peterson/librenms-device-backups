@@ -16,6 +16,8 @@ namespace DRP\DeviceBackups\Hooks;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Plugins\Hooks\MenuEntryHook;
+use DRP\DeviceBackups\Log;
+use DRP\DeviceBackups\PluginData;
 
 /**
  * LibreNMS menu hook for the DeviceBackups plugin.
@@ -35,6 +37,9 @@ class Menu extends MenuEntryHook {
     // override the data function to add additional data to be accessed in the view
     // inside the blade, all variables will be named based on the key in the returned array
     public function data(array $settings = []): array {
-        return $settings;
+
+        return [
+            'plugin' => PluginData::getInstance(),
+        ];
     }
 }

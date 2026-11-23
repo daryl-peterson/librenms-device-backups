@@ -1,9 +1,9 @@
 <div style="margin-top:-12px; padding-bottom: 1em;">
-    @includeIf($info['name'] . '::layouts.flash-messages')
+    @includeIf($plugin->name . '::layouts.flash-messages')
 </div>
 @component('device-backups::layouts.panel')
-    @includeIf($info['name'] . '::partials.author')
-    @includeIf($info['name'] . '::partials.dbstatus')
+    @includeIf($plugin->name . '::partials.author')
+    @includeIf($plugin->name . '::partials.dbstatus')
 @endcomponent
 
 
