@@ -5,7 +5,7 @@
     <div id="device-backups-flash-messages" style="margin-top:-12px; padding-bottom: 1em;">
         @includeIf($plugin->name . '::layouts.flash-messages')
     </div>
-    @component('device-backups::layouts.panel')
+    @component($plugin->name . '::layouts.panel', ['plugin' => $plugin])
         @includeIf($plugin->name . '::partials.author', ['plugin' => $plugin])
 
         @unless ($databaseReady)

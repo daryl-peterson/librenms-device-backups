@@ -3,15 +3,18 @@
 namespace DRP\DeviceBackups\Controllers;
 
 use DateTimeZone;
-use DRP\DeviceBackups\Backup\BackupSchedule;
-use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
-use DRP\DeviceBackups\PluginSettings;
-use DRP\DeviceBackups\TraitValidateAdmin;
+
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\View\View;
+
+use DRP\DeviceBackups\PluginData;
+use DRP\DeviceBackups\Backup\BackupSchedule;
+use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
+use DRP\DeviceBackups\PluginSettings;
+use DRP\DeviceBackups\TraitValidateAdmin;
 
 /**
  * LibreNMS Device Backups Schedule Controller.
@@ -26,10 +29,31 @@ use Illuminate\View\View;
 final class BackupScheduleController extends Controller {
     use TraitValidateAdmin;
 
+    /**
+     * The plugin data instance.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
+    private PluginData $plugin;
+
+    /**
+     * PluginData constructor.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function __construct() {
         $this->middleware(RequireBackupDatabase::class);
+        $this->plugin = PluginData::getInstance();
     }
 
+    /**
+     * Show the form for editing the backup schedule.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function edit(): View {
         $settings = $this->settings();
         $schedule = BackupSchedule::fromSettings($settings->all());
@@ -39,9 +63,16 @@ final class BackupScheduleController extends Controller {
             'weekdays' => BackupSchedule::WEEKDAYS,
             'timezones' => DateTimeZone::listIdentifiers(),
             'nextRun' => $schedule->nextRun(),
+            'plugin' => $this->plugin,
         ]);
     }
 
+    /**
+     * Update the backup schedule.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function update(Request $request): RedirectResponse {
         $settings = $this->settings();
         $data = $request->validate([
@@ -68,14 +99,20 @@ final class BackupScheduleController extends Controller {
         }
 
         if (!$saved) {
-            return redirect()->route('device-backups.backups.schedule')
+            return redirect()->route($this->plugin->name . '.backups.schedule')
                 ->withInput($data)->with('error', 'Could not save the backup schedule.');
         }
 
-        return redirect()->route('device-backups.backups.schedule')
+        return redirect()->route($this->plugin->name . '.backups.schedule')
             ->with('success', $schedule->enabled ? 'Backup schedule saved.' : 'Scheduled backups are paused.');
     }
 
+    /**
+     * Get the plugin settings.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     private function settings(): PluginSettings {
         $this->validateAdmin();
         $settings = new PluginSettings();

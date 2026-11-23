@@ -1,9 +1,9 @@
 @extends('layouts.librenmsv1')
 
 @section('content')
-    @component('device-backups::layouts.panel')
+    @component($plugin->name . '::layouts.panel', ['plugin' => $plugin])
         <div style="font-size: 1.1em; font-weight: 600; margin-bottom: .5em; color:#333">Backup Schedule</div>
-        @include('device-backups::layouts.flash-messages')
+        @include($plugin->name . '::layouts.flash-messages')
 
         @if ($errors->any())
             <ul class="text-danger" role="alert">
@@ -20,10 +20,10 @@
                 Scheduled backups are paused.
             @endif
         </p>
-        <p>Set the recipient for scheduled run summaries under <a href="{{ route('device-backups.settings') }}#backup_report_email">Backup
+        <p>Set the recipient for scheduled run summaries under <a href="{{ route($plugin->name . '.settings') }}#backup_report_email">Backup
                 Report Email</a>.</p>
 
-        <form method="POST" action="{{ route('device-backups.backups.schedule.update') }}">
+        <form method="POST" action="{{ route($plugin->name . '.backups.schedule.update') }}">
             @csrf
 
             <div class="checkbox">

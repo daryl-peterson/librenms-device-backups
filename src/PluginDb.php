@@ -1,39 +1,15 @@
 <?php
 
-/**
- * LibreNMS Device Backups Database Check.
- *
- * @package     device-importer
- * @author      Daryl Peterson <@gmail.com>
- * @license     https://opensource.org MIT License
- * @link        https://github.com/daryl-peterson/
- * @since       0.0.1
- */
-
 namespace DRP\DeviceBackups;
-
-/**
- * Standard PHP imports.
- */
 
 use DateTimeImmutable;
 use Illuminate\Database\QueryException;
-
-/**
- * Laravel and application imports.
- */
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 
-
-/**
- * Plugin database imports.
- */
-
 use DRP\DeviceBackups\Helper;
-use DRP\DeviceBackups\Log;
 use DRP\DeviceBackups\PluginCache;
 
 /**
@@ -81,10 +57,33 @@ class PluginDb {
         $pdo->query('SELECT 1');
     }
 
+    /**
+     * Get the current date and time in 'Y-m-d H:i:s' format.
+     *
+     * @return string
+     * @since 0.0.1
+     */
+    public static function now(): string {
+        return (new DateTimeImmutable())->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * Get the TCP host for the database connection.
+     *
+     * @param string $host
+     * @return string
+     * @since 0.0.1
+     */
     private static function tcpHost(string $host): string {
         return strcasecmp($host, 'localhost') === 0 ? '127.0.0.1' : $host;
     }
 
+    /**
+     * Clear all database connection checks from the cache.
+     *
+     * @return void
+     * @since 0.0.1
+     */
     public static function clearConnectionChecks(): void {
         PluginCache::forget(CACHE_DB_PASS);
         PluginCache::forget(CACHE_DB_ERROR);
@@ -173,14 +172,33 @@ class PluginDb {
         }
     }
 
+    /**
+     * Get the list of migration file names.
+     *
+     * @return array
+     * @since 0.0.1
+     */
     private static function migrationNames(): array {
-        return array_map(static fn (string $file): string => basename($file, '.php'), glob(self::MIGRATIONS_PATH . '/*.php'));
+        return array_map(static fn(string $file): string => basename($file, '.php'), glob(self::MIGRATIONS_PATH . '/*.php'));
     }
 
+    /**
+     * Get the current migration version hash.
+     *
+     * @return string
+     * @since 0.0.1
+     */
     public static function migrationVersion(): string {
         return hash('sha256', implode("\n", self::migrationNames()));
     }
 
+    /**
+     * Check if the plugin database is ready.
+     *
+     * @param array|null $settings
+     * @return bool
+     * @since 0.0.1
+     */
     public static function isReady(?array $settings = null): bool {
         $settings ??= PluginData::getSettings();
         if (!PluginSettings::hasSavedDatabase($settings)) {
@@ -227,10 +245,22 @@ class PluginDb {
         return PLUGIN_DB_CONNECTION;
     }
 
+    /**
+     * Get the database name.
+     *
+     * @return string
+     * @since 0.0.1
+     */
     public static function getDbName(): string {
         return (string) Config::get('database.connections.' . PLUGIN_DB_CONNECTION . '.database');
     }
 
+    /**
+     * Initialize the plugin database configuration.
+     *
+     * @return void
+     * @since 0.0.1
+     */
     public static function initConfig(): void {
         if (self::$initialized) {
             return;
@@ -254,6 +284,13 @@ class PluginDb {
         self::$initialized = true;
     }
 
+    /**
+     * Get the TCP host for the database connection.
+     *
+     * @param string $host
+     * @return string
+     * @since 0.0.1
+     */
     private static function connectionConfig(#[\SensitiveParameter] array $settings): array {
         $settings['host'] = self::tcpHost($settings['host']);
 
@@ -266,6 +303,12 @@ class PluginDb {
         ];
     }
 
+    /**
+     * Get the current date and time in 'Y-m-d H:i:s' format.
+     *
+     * @return string
+     * @since 0.0.1
+     */
     private static function getDate(): string {
         $date = new DateTimeImmutable();
         return $date->format('Y-m-d H:i:s');

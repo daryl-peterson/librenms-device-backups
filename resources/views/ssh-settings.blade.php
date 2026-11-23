@@ -1,9 +1,9 @@
 @extends('layouts.librenmsv1')
 
 @section('content')
-    @component('device-backups::layouts.panel')
+    @component($plugin->name . '::layouts.panel', ['plugin' => $plugin])
         <h3>SSH Settings <small>{{ $device->hostname }}</small></h3>
-        @include('device-backups::layouts.flash-messages')
+        @includeIf($plugin->name . '::layouts.flash-messages')
         @if ($errors->any())
             <ul class="text-danger" role="alert">
                 @foreach ($errors->all() as $error)
@@ -22,8 +22,7 @@
             @endif
         </p>
 
-        <form id="backup-device-ssh" method="POST"
-            action="{{ route('device-backups.backups.ssh.update', ['device' => $device->getKey()]) }}">
+        <form id="backup-device-ssh" method="POST" action="{{ route('device-backups.backups.ssh.update', ['device' => $device->getKey()]) }}">
             @csrf
 
             <div class="form-group">
@@ -47,8 +46,8 @@
 
             <div class="form-group">
                 <label for="ssh-password">SSH Password</label>
-                <input type="password" id="ssh-password" name="ssh_password" class="form-control"
-                    autocomplete="new-password" @if ($hasPassword) placeholder="Leave blank to keep the current password" @else required @endif>
+                <input type="password" id="ssh-password" name="ssh_password" class="form-control" autocomplete="new-password"
+                    @if ($hasPassword) placeholder="Leave blank to keep the current password" @else required @endif>
             </div>
 
             <div class="form-group">
@@ -64,7 +63,8 @@
                         value="{{ old('fingerprint', $fingerprint) }}" required>
                     <span class="input-group-btn">
                         <button type="button" class="btn btn-default" id="read-device-host-key"
-                            data-url="{{ route('device-backups.backups.ssh.fingerprint', ['device' => $device->getKey()]) }}">Read Host Key</button>
+                            data-url="{{ route('device-backups.backups.ssh.fingerprint', ['device' => $device->getKey()]) }}">Read Host
+                            Key</button>
                     </span>
                 </div>
                 <p id="device-host-key-result" class="help-block" role="status" hidden></p>
@@ -81,7 +81,8 @@
                     @if ($hasEnablePassword) placeholder="Leave blank to keep the current password" @endif>
                 @if ($hasEnablePassword)
                     <div class="checkbox">
-                        <label><input type="checkbox" name="clear_enable" value="1" @checked(old('clear_enable'))> Clear the saved enable password</label>
+                        <label><input type="checkbox" name="clear_enable" value="1" @checked(old('clear_enable'))> Clear the saved
+                            enable password</label>
                     </div>
                 @endif
             </fieldset>
@@ -127,14 +128,19 @@
             try {
                 const response = await fetch(button.dataset.url, {
                     method: 'POST',
-                    headers: { Accept: 'application/json' },
+                    headers: {
+                        Accept: 'application/json'
+                    },
                     signal: timeout.signal,
-                    body: new URLSearchParams({ _token: form.elements._token.value, port: port.value }),
+                    body: new URLSearchParams({
+                        _token: form.elements._token.value,
+                        port: port.value
+                    }),
                 });
                 const data = await response.json();
-                result.textContent = response.ok
-                    ? `The device presented ${data.fingerprint}. Verify it with the device console or administrator before entering it above.`
-                    : (data.message ?? 'Could not read the device host key.');
+                result.textContent = response.ok ?
+                    `The device presented ${data.fingerprint}. Verify it with the device console or administrator before entering it above.` :
+                    (data.message ?? 'Could not read the device host key.');
             } catch {
                 result.textContent = 'Could not read the device host key. Try again.';
             } finally {

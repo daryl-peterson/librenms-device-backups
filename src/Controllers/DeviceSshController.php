@@ -2,15 +2,9 @@
 
 namespace DRP\DeviceBackups\Controllers;
 
+use Throwable;
 use App\Models\Device;
-use DRP\DeviceBackups\Backup\BackupFailure;
-use DRP\DeviceBackups\Backup\DeviceSshStatus;
-use DRP\DeviceBackups\Backup\SshConnection;
-use DRP\DeviceBackups\Backup\SshFailure;
-use DRP\DeviceBackups\Backup\Target;
-use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
-use DRP\DeviceBackups\PluginData;
-use DRP\DeviceBackups\TraitValidateAdmin;
+
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,9 +14,18 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+
 use phpseclib4\Exception\BaseException as SshException;
 use phpseclib4\Net\SSH2;
-use Throwable;
+
+use DRP\DeviceBackups\Backup\BackupFailure;
+use DRP\DeviceBackups\Backup\DeviceSshStatus;
+use DRP\DeviceBackups\Backup\SshConnection;
+use DRP\DeviceBackups\Backup\SshFailure;
+use DRP\DeviceBackups\Backup\Target;
+use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
+use DRP\DeviceBackups\PluginData;
+use DRP\DeviceBackups\TraitValidateAdmin;
 
 /**
  * LibreNMS Device Backups SSH Controller.
@@ -37,10 +40,31 @@ use Throwable;
 final class DeviceSshController extends Controller {
     use TraitValidateAdmin;
 
+    /**
+     * The plugin data instance.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
+    private PluginData $plugin;
+
+    /**
+     * DeviceSshController constructor.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function __construct() {
         $this->middleware(RequireBackupDatabase::class);
+        $this->plugin = PluginData::getInstance();
     }
 
+    /**
+     * Show the SSH status for devices.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function index(Request $request): View {
         $this->authorizePlugin();
         $search = $this->search($request->query('search'));
@@ -48,15 +72,29 @@ final class DeviceSshController extends Controller {
             'attribs' => fn($query) => $query->whereIn('attrib_type', [Target::ATTRIBUTE, DeviceSshStatus::ATTRIBUTE]),
         ])->simplePaginate(25)->withQueryString();
 
-        return view('device-backups::ssh-status', ['devices' => $devices, 'search' => $search]);
+        return view(
+            'device-backups::ssh-status',
+            [
+                'plugin' => $this->plugin,
+                'devices' => $devices,
+                'search' => $search
+            ]
+        );
     }
 
+    /**
+     * Show the form for editing the SSH settings for a device.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function edit(Device $device): View {
         $this->authorizePlugin($device);
         $enrolled = Target::revision($device) !== null;
         $settings = $this->saved($device);
 
         return view('device-backups::ssh-settings', [
+            'plugin' => $this->plugin,
             'device' => $device,
             'enrolled' => $enrolled,
             'unreadable' => $enrolled && $settings === [],
@@ -74,6 +112,12 @@ final class DeviceSshController extends Controller {
         ]);
     }
 
+    /**
+     * Update the SSH settings for a device.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function update(Request $request, Device $device): RedirectResponse {
         $this->authorizePlugin($device);
         $saved = $this->saved($device);
@@ -121,6 +165,12 @@ final class DeviceSshController extends Controller {
             : $redirect->withInput($safeInput)->with('error', 'Could not save the device SSH settings.');
     }
 
+    /**
+     * Check the SSH connection for a device.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function check(Request $request, Device $device): RedirectResponse {
         $this->authorizePlugin($device);
         $redirect = $request->input('from') === 'status'
@@ -144,6 +194,12 @@ final class DeviceSshController extends Controller {
         }
     }
 
+    /**
+     * Get the SSH host key fingerprint for a device.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function fingerprint(Request $request, Device $device): JsonResponse {
         $this->authorizePlugin($device);
         $validator = Validator::make($request->only('port'), ['port' => ['required', 'integer', 'between:1,65535']]);
@@ -161,6 +217,12 @@ final class DeviceSshController extends Controller {
         }
     }
 
+    /**
+     * Remove the SSH settings for a device.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     public function remove(Device $device): RedirectResponse {
         $this->authorizePlugin($device);
         try {
@@ -175,6 +237,12 @@ final class DeviceSshController extends Controller {
         );
     }
 
+    /**
+     * Authorize the plugin and optionally the device.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     private function authorizePlugin(?Device $device = null): void {
         $this->validateAdmin();
         abort_unless(PluginData::getPluginModel()?->plugin_active, 404);
@@ -183,10 +251,22 @@ final class DeviceSshController extends Controller {
         }
     }
 
+    /**
+     * Get the redirect response for editing a device's SSH settings.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     private function editRedirect(Device $device): RedirectResponse {
         return redirect()->route('device-backups.backups.ssh.edit', ['device' => $device->getKey()]);
     }
 
+    /**
+     * Get the saved SSH settings for a device.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     private function saved(Device $device): array {
         if (Target::revision($device) === null) {
             return [];
@@ -199,6 +279,12 @@ final class DeviceSshController extends Controller {
         }
     }
 
+    /**
+     * Sanitize a search value for SSH settings.
+     *
+     * @version 0.0.1
+     * @since 0.0.1
+     */
     private function search(mixed $value): string {
         return is_string($value) ? mb_substr(trim($value), 0, 128) : '';
     }

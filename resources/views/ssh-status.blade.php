@@ -1,7 +1,7 @@
 @extends('layouts.librenmsv1')
 
 @section('content')
-    @component('device-backups::layouts.panel', ['wide' => true])
+    @component('device-backups::layouts.panel', ['wide' => true, 'plugin' => $plugin])
         <div style="font-size: 1.1em; font-weight: 600; margin-bottom: .5em;">Device SSH Status</div>
         @include('device-backups::layouts.flash-messages')
 

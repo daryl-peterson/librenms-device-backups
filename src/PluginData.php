@@ -11,7 +11,7 @@ use DRP\DeviceBackups\PluginSettings;
 use DRP\DeviceBackups\PluginCache;
 
 /**
- * LibreNMS Device Backups Plugin.
+ * LibreNMS Device Backups Plugin Data Class
  *
  * @package     librenms-device-backups
  * @author      Daryl Peterson <daryl.peterson@gmail.com>

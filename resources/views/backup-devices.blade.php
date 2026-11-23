@@ -1,16 +1,16 @@
 @extends('layouts.librenmsv1')
 
 @section('content')
-    @component('device-backups::layouts.panel', ['wide' => true])
+    @component($plugin->name . '::layouts.panel', ['wide' => true, 'plugin' => $plugin])
         <div style="font-size: 1.1em; font-weight: 600; margin-bottom: .5em;">Backups by Device</div>
-        @include('device-backups::layouts.flash-messages')
-        <form method="GET" action="{{ route('device-backups.backups.devices') }}" class="form-inline">
+        @include($plugin->name . '::layouts.flash-messages')
+        <form method="GET" action="{{ route($plugin->name . '.backups.devices') }}" class="form-inline">
             <label for="backup-device-search" style="margin-left: .5em;">Find a Device</label>
             <input id="backup-device-search" name="search" class="form-control" value="{{ $search }}"
                 placeholder="Hostname or device ID">
             <button type="submit" class="btn btn-default">Search</button>
             @if ($search !== '')
-                <a class="btn btn-link" href="{{ route('device-backups.backups.devices') }}">Clear Search</a>
+                <a class="btn btn-link" href="{{ route($plugin->name . '.backups.devices') }}">Clear Search</a>
             @endif
         </form>
 
@@ -34,14 +34,18 @@
                             <td>@include('device-backups::partials.backup-status-badge', ['state' => $attempt?->status])</td>
                             <td>{{ $attempt?->run_started_at ?? '—' }}</td>
                             <td>
-                                <a href="{{ route('device-backups.backups.history', ['device' => $device->getKey()]) }}">View Backups</a>
+                                <a href="{{ route($plugin->name . '.backups.history', ['device' => $device->getKey()]) }}">View Backups</a>
                                 <span aria-hidden="true"> · </span>
-                                <a href="{{ route('device-backups.backups.ssh.edit', ['device' => $device->getKey()]) }}">SSH Settings</a>
+                                <a href="{{ route($plugin->name . '.backups.ssh.edit', ['device' => $device->getKey()]) }}">SSH Settings</a>
                                 @include('device-backups::partials.run-backup', [
                                     'deviceId' => $device->getKey(),
                                     'canStartBackup' => !$device->disabled && $device->backup_enrolled,
                                     'manualRequest' => $pendingRequests->get($device->getKey()),
-                                    'returnQuery' => ['from' => 'devices', 'search' => $search, 'page' => $devices->currentPage()],
+                                    'returnQuery' => [
+                                        'from' => 'devices',
+                                        'search' => $search,
+                                        'page' => $devices->currentPage(),
+                                    ],
                                 ])
                             </td>
                         </tr>
