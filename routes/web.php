@@ -17,9 +17,8 @@ use DRP\DeviceBackups\Controllers\BackupScheduleController;
 use DRP\DeviceBackups\Controllers\DeviceSshController;
 use DRP\DeviceBackups\Controllers\PluginController;
 
-$plugin = PluginData::getPluginName();
-
-
+$obj = PluginData::getInstance();
+$plugin = $obj->name;
 
 /**
  * Settings routes

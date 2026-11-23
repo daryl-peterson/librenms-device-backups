@@ -131,26 +131,6 @@ class PluginData {
     }
 
     /**
-     * Get plugin title.
-     *
-     * @return string
-     * @version 0.0.1
-     */
-    public static function getPluginTitle(): string {
-        return PLUGIN_TITLE;
-    }
-
-    /**
-     * Get plugin name.
-     *
-     * @return string
-     * @version 0.0.1
-     */
-    public static function getPluginName(): string {
-        return PLUGIN_NAME;
-    }
-
-    /**
      * Get plugin name.
      *
      * @return string
