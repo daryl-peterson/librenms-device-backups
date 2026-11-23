@@ -6,7 +6,7 @@
         @includeIf($plugin->name . '::layouts.flash-messages')
     </div>
     @component('device-backups::layouts.panel')
-        @includeIf($plugin->name . '::partials.author')
+        @includeIf($plugin->name . '::partials.author', ['plugin' => $plugin])
 
         @unless ($databaseReady)
             <p class="alert alert-info" role="status">

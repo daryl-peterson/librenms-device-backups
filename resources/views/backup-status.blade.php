@@ -1,7 +1,7 @@
 @extends('layouts.librenmsv1')
 
 @section('content')
-    @component('device-backups::layouts.panel', ['wide' => true])
+    @component($plugin->name . '::layouts.panel', ['wide' => true, 'plugin' => $plugin])
         <fieldset style="margin: .5em;">
             <legend style="border: 0px; font-size: 1.1em; font-weight: 600; margin-bottom: .5em;">Backup Runs
             </legend>
@@ -25,7 +25,9 @@
                                         href="{{ route('device-backups.backups.status', ['run' => $entry->id, 'status' => $status]) }}">#{{ $entry->id }}</a>
                                     @if ($entry->requested_device_id)
                                         <small>
-                                            Manual · <a href="{{ route('device-backups.backups.history', ['device' => $entry->requested_device_id]) }}">Device #{{ $entry->requested_device_id }}</a>
+                                            Manual · <a
+                                                href="{{ route('device-backups.backups.history', ['device' => $entry->requested_device_id]) }}">Device
+                                                #{{ $entry->requested_device_id }}</a>
                                         </small>
                                     @endif
                                 </td>

@@ -44,6 +44,7 @@ final class BackupController extends Controller {
 
         try {
             return view('device-backups::backup-status', [
+                'plugin' => PluginData::getInstance(),
                 'runs' => $store->runs(),
                 'results' => $store->results(run: $run, status: $status),
                 'run' => $run,
