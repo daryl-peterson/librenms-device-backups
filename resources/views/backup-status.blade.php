@@ -3,7 +3,7 @@
 @section('content')
     @php
         $timezone = session('preferences.timezone') ?: config('app.timezone');
-        $formatLocalTime = static fn (?string $timestamp): string => $timestamp === null
+        $formatLocalTime = static fn(?string $timestamp): string => $timestamp === null
             ? '—'
             : \Carbon\CarbonImmutable::parse($timestamp, 'UTC')->setTimezone($timezone)->format('Y-m-d H:i:s');
         $attemptQuery = [
@@ -14,15 +14,14 @@
             'direction' => $direction,
             'runs_page' => $runs->currentPage() > 1 ? $runs->currentPage() : null,
         ];
-        $attemptSortUrl = static fn (string $column): string => route('device-backups.backups.status', array_replace(
-            $attemptQuery,
-            [
+        $attemptSortUrl = static fn(string $column): string => route(
+            'device-backups.backups.status',
+            array_replace($attemptQuery, [
                 'sort' => $column,
-                'direction' => $column === $sort
-                    ? ($direction === 'asc' ? 'desc' : 'asc')
-                    : ($column === 'started' ? 'desc' : 'asc'),
-            ],
-        )) . '#backup-attempts';
+                'direction' =>
+                    $column === $sort ? ($direction === 'asc' ? 'desc' : 'asc') : ($column === 'started' ? 'desc' : 'asc'),
+            ]),
+        ) . '#backup-attempts';
     @endphp
 
     @component($plugin->name . '::layouts.panel', ['wide' => true, 'plugin' => $plugin])
@@ -34,8 +33,8 @@
                     <thead>
                         <tr>
                             <th scope="col">Run</th>
-                            <th scope="col">Started (local time)</th>
-                            <th scope="col">Finished (local time)</th>
+                            <th scope="col">Started</th>
+                            <th scope="col">Finished</th>
                             <th scope="col">Status</th>
                             <th scope="col">Succeeded</th>
                             <th scope="col">Failed</th>
@@ -84,7 +83,7 @@
 
             @if ($selectedRun?->requested_at)
                 <p>
-                    Requested {{ $formatLocalTime($selectedRun->requested_at) }} local time.
+                    Requested {{ $formatLocalTime($selectedRun->requested_at) }}
                     @include($plugin->name . '::partials.backup-status-badge', ['state' => $selectedRun->status])
                 </p>
                 @if ($selectedRun->request_error)
@@ -102,8 +101,8 @@
                 <input type="hidden" name="sort" value="{{ $sort }}">
                 <input type="hidden" name="direction" value="{{ $direction }}">
                 <label for="backup-attempts-search" style="margin-left: .5em;">Search</label>
-                <input type="search" id="backup-attempts-search" name="search" class="form-control"
-                    value="{{ $search }}" placeholder="Device, profile, or details" maxlength="128">
+                <input type="search" id="backup-attempts-search" name="search" class="form-control" value="{{ $search }}"
+                    placeholder="Device, profile, or details" maxlength="128">
                 <label for="backup-status-filter" style="margin-left: .5em;">Status</label>
                 <select id="backup-status-filter" name="status" class="form-control">
                     <option value="">All</option>
@@ -113,7 +112,8 @@
                 <button class="btn btn-default" type="submit">Filter</button>
                 @if ($run || $status || $search !== '')
                     <a class="btn btn-link"
-                        href="{{ route('device-backups.backups.status', array_replace($attemptQuery, ['run' => null, 'status' => null, 'search' => null])) }}#backup-attempts">Clear Filters</a>
+                        href="{{ route('device-backups.backups.status', array_replace($attemptQuery, ['run' => null, 'status' => null, 'search' => null])) }}#backup-attempts">Clear
+                        Filters</a>
                 @endif
             </form>
             @include($plugin->name . '::partials.backup-results', [

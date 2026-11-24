@@ -3,7 +3,7 @@
     $columns = array_filter([
         'device' => $showDevice ? 'Device' : null,
         'run' => $showRun ? 'Run' : null,
-        'started' => isset($formatRunStarted) ? 'Run started (local time)' : 'Run started (UTC)',
+        'started' => isset($formatRunStarted) ? 'Run started' : 'Run started (UTC)',
         'profile' => 'Profile',
         'status' => 'Status',
         'details' => 'Details',
@@ -17,10 +17,12 @@
             <tr>
                 @foreach ($columns as $column => $label)
                     @php
-                        $sortable = isset($attemptSortUrl) && isset(\DRP\DeviceBackups\Backup\BackupStore::RESULT_SORT_COLUMNS[$column]);
+                        $sortable =
+                            isset($attemptSortUrl) && isset(\DRP\DeviceBackups\Backup\BackupStore::RESULT_SORT_COLUMNS[$column]);
                         $sorted = $sortable && $attemptSort === $column;
                     @endphp
-                    <th scope="col" @if ($sorted) aria-sort="{{ $attemptDirection === 'asc' ? 'ascending' : 'descending' }}" @endif>
+                    <th scope="col"
+                        @if ($sorted) aria-sort="{{ $attemptDirection === 'asc' ? 'ascending' : 'descending' }}" @endif>
                         @if ($sortable)
                             <a href="{{ $attemptSortUrl($column) }}">
                                 {{ $label }}

@@ -29,9 +29,6 @@ use DateTimeImmutable;
  * @since       0.0.1
  */
 class Helper {
-    public function __construct() {
-        # Code Here
-    }
 
     /**
      * Check if the current user is an admin.
