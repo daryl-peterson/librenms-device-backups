@@ -121,7 +121,8 @@ final class BackupController extends Controller {
             $hostname = $model?->hostname ?? $store->latestAttempts([$device])->get($device)?->hostname;
             abort_if($hostname === null, 404);
 
-            return view($pname . '::backup-device', [
+            return view($this->plugin->name . '::backup-device', [
+                'plugin' => $this->plugin,
                 'device' => $model,
                 'deviceId' => $device,
                 'hostname' => $hostname,

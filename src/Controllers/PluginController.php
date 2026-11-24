@@ -172,10 +172,10 @@ class PluginController extends Controller {
 
         $validated = $validator->validated();
         $database = array_intersect_key($validated, array_flip(['database', 'host', 'port', 'username', 'password']));
-        $database['password'] ??= PluginSettings::databaseSettings($this->info['settings'])['password'];
+        $database['password'] ??= PluginSettings::databaseSettings($this->plugin->settings)['password'];
 
         try {
-            PluginDb::testConnection($database);
+            $this->verifyDatabaseConnection($database);
         } catch (PDOException $e) {
             return $this->settingsResponse($request, $save, 'error', $this->databaseConnectionError($e));
         }
@@ -217,7 +217,7 @@ class PluginController extends Controller {
 
         try {
             $database = PluginSettings::databaseSettings($saved);
-            PluginDb::testConnection($database);
+            $this->verifyDatabaseConnection($database);
         } catch (DecryptException) {
             return $this->settingsResponse($request, true, 'error', 'The saved database password could not be read. Enter it again and save the settings.');
         } catch (PDOException $e) {
@@ -273,6 +273,10 @@ class PluginController extends Controller {
             2002, 2003, 2005 => 'Could not reach the database server. Check the host, port, and network access.',
             default => 'Could not connect to the backup database with the supplied settings.',
         };
+    }
+
+    protected function verifyDatabaseConnection(#[\SensitiveParameter] array $database): void {
+        PluginDb::testConnection($database);
     }
 
     /**

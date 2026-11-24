@@ -15,15 +15,15 @@ final class TargetTest extends TestCase {
 
     public static function detectedDevices(): array {
         return [
-            'Cisco IOS XE' => [new DeviceFixture(os: 'iosxe'), 'ios'],
-            'Dell PowerConnect' => [new DeviceFixture(os: 'powerconnect'), 'dell'],
-            'EdgeRouter' => [new DeviceFixture(os: 'edgeos'), 'edgeos'],
-            'EdgeSwitch' => [new DeviceFixture(os: 'edgeswitch', hardware: 'ES-24-250W'), 'edgeswitch'],
-            'airOS' => [new DeviceFixture(os: 'airos'), 'airos'],
-            'classic airFiber' => [new DeviceFixture(os: 'airos-af'), 'airfiber'],
-            'airFiber 60' => [new DeviceFixture(os: 'airos-af60'), null],
-            'UniFi reported as EdgeSwitch' => [new DeviceFixture(os: 'edgeswitch', sysDescr: 'USW-48'), null],
-            'Linux needs an explicit server profile' => [new DeviceFixture(os: 'linux'), null],
+            'Cisco IOS XE' => [new DeviceFixture(['os' => 'iosxe']), 'ios'],
+            'Dell PowerConnect' => [new DeviceFixture(['os' => 'powerconnect']), 'dell'],
+            'EdgeRouter' => [new DeviceFixture(['os' => 'edgeos']), 'edgeos'],
+            'EdgeSwitch' => [new DeviceFixture(['os' => 'edgeswitch', 'hardware' => 'ES-24-250W']), 'edgeswitch'],
+            'airOS' => [new DeviceFixture(['os' => 'airos']), 'airos'],
+            'classic airFiber' => [new DeviceFixture(['os' => 'airos-af']), 'airfiber'],
+            'airFiber 60' => [new DeviceFixture(['os' => 'airos-af60']), null],
+            'UniFi reported as EdgeSwitch' => [new DeviceFixture(['os' => 'edgeswitch', 'sysDescr' => 'USW-48']), null],
+            'Linux needs an explicit server profile' => [new DeviceFixture(['os' => 'linux']), null],
         ];
     }
 
@@ -46,7 +46,7 @@ final class TargetTest extends TestCase {
     }
 
     public function testDerivesPromptNameAndHonorsAnOverride(): void {
-        $device = new DeviceFixture(hostname: 'inventory.example.test', sysName: 'detected.example.test');
+        $device = new DeviceFixture(['hostname' => 'inventory.example.test', 'sysName' => 'detected.example.test']);
 
         self::assertSame('detected', Target::promptName($device, []));
         self::assertSame('custom', Target::promptName($device, ['prompt_name' => 'custom']));

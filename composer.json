@@ -55,7 +55,7 @@
         "test": "phpunit",
         "test:coverage": [
             "@putenv XDEBUG_MODE=coverage",
-            "@php .test-vendor/bin/phpunit --testsuite unit --coverage-html .coverage/html --coverage-clover .coverage/clover.xml"
+            "@php .test-vendor/bin/phpunit --coverage-html .coverage/html --coverage-clover .coverage/clover.xml"
         ]
     },
     "config": {

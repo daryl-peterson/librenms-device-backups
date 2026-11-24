@@ -10,5 +10,6 @@
 .vscode
 .phpunit.*
 .test-*
+storage/
+test.sh
 /composer.lock
-tests/Unit/test.sh

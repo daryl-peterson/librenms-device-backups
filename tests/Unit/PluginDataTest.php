@@ -20,7 +20,7 @@ final class PluginDataTest extends TestCase {
     private const SETTINGS = ['backup_report_email' => 'backups@example.test'];
 
     private ?Container $previousApp;
-    private array $previousRecords;
+    private ?array $previousRecords;
     private Router $router;
 
     protected function setUp(): void {
@@ -28,9 +28,9 @@ final class PluginDataTest extends TestCase {
 
         $this->previousRecords = PluginFixture::$records;
         PluginFixture::$records = [
-            new PluginFixture(PLUGIN_NAME, 1, []),
-            new PluginFixture('other-plugin', 2, []),
-            new PluginFixture(PLUGIN_NAME, 2, self::SETTINGS),
+            new PluginFixture(['plugin_name' => PLUGIN_NAME, 'version' => 1, 'settings' => []]),
+            new PluginFixture(['plugin_name' => 'other-plugin', 'version' => 2, 'settings' => []]),
+            new PluginFixture(['plugin_name' => PLUGIN_NAME, 'version' => 2, 'settings' => self::SETTINGS]),
         ];
 
         $app = new Container();
