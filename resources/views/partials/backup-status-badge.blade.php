@@ -11,4 +11,4 @@
         default => ['default', 'No backups'],
     };
 @endphp
-<span class="label label-{{ $badge }}">{{ $label }}</span>
+<span class="label label-{{ $badge }} tw:inline-block tw:text-sm tw:px-3 tw:py-2">{{ $label }}</span>

@@ -1,6 +1,13 @@
 @extends('layouts.librenmsv1')
 
 @section('content')
+    @php
+        $timezone = session('preferences.timezone') ?: config('app.timezone');
+        $formatLocalTime = static fn (?string $timestamp): string => $timestamp === null
+            ? '—'
+            : \Carbon\CarbonImmutable::parse($timestamp, 'UTC')->setTimezone($timezone)->format('Y-m-d H:i:s');
+    @endphp
+
     @component($plugin->name . '::layouts.panel', ['wide' => true, 'plugin' => $plugin])
         <fieldset style="margin: .5em;">
             <legend style="border: 0px; font-size: 1.1em; font-weight: 600; margin-bottom: .5em;">Backup Runs
@@ -10,8 +17,8 @@
                     <thead>
                         <tr>
                             <th scope="col">Run</th>
-                            <th scope="col">Started (UTC)</th>
-                            <th scope="col">Finished (UTC)</th>
+                            <th scope="col">Started (local time)</th>
+                            <th scope="col">Finished (local time)</th>
                             <th scope="col">Status</th>
                             <th scope="col">Succeeded</th>
                             <th scope="col">Failed</th>
@@ -31,14 +38,14 @@
                                         </small>
                                     @endif
                                 </td>
-                                <td>{{ $entry->status === 'queued' ? '—' : $entry->started_at }}</td>
-                                <td>{{ $entry->finished_at ?? '—' }}</td>
-                                <td>@include('device-backups::partials.backup-status-badge', [
+                                <td>{{ $entry->status === 'queued' ? '—' : $formatLocalTime($entry->started_at) }}</td>
+                                <td>{{ $formatLocalTime($entry->finished_at) }}</td>
+                                <td>@include($plugin->name . '::partials.backup-status-badge', [
                                     'state' => $entry->status,
                                 ])</td>
                                 <td>{{ $entry->succeeded }}</td>
                                 <td>{{ $entry->failed }}</td>
-                                <td>@include('device-backups::partials.backup-status-badge', [
+                                <td>@include($plugin->name . '::partials.backup-status-badge', [
                                     'state' => $entry->email_status,
                                 ])</td>
                             </tr>
@@ -60,8 +67,8 @@
 
             @if ($selectedRun?->requested_at)
                 <p>
-                    Requested {{ $selectedRun->requested_at }} UTC.
-                    @include('device-backups::partials.backup-status-badge', ['state' => $selectedRun->status])
+                    Requested {{ $formatLocalTime($selectedRun->requested_at) }} local time.
+                    @include($plugin->name . '::partials.backup-status-badge', ['state' => $selectedRun->status])
                 </p>
                 @if ($selectedRun->request_error)
                     <p class="alert alert-danger">{{ $selectedRun->request_error }}</p>
@@ -83,7 +90,11 @@
                     <a class="btn btn-link" href="{{ route('device-backups.backups.status') }}">Clear Filters</a>
                 @endif
             </form>
-            @include('device-backups::partials.backup-results', ['showDevice' => true])
+            @include($plugin->name . '::partials.backup-results', [
+                'showDevice' => true,
+                'showRun' => false,
+                'formatRunStarted' => $formatLocalTime,
+            ])
         </fieldset>
     @endcomponent
 @endsection

@@ -3,12 +3,15 @@
     <form method="POST" class="form-inline tw:inline-block"
         action="{{ route('device-backups.backups.start', ['device' => $deviceId] + ($returnQuery ?? [])) }}">
         @csrf
-        <button type="submit" class="btn btn-primary btn-sm">Run Backup</button>
+        <button type="submit" class="btn btn-success" title="Run Backup" aria-label="Run Backup">
+            <i class="fa fa-history fa-lg" aria-hidden="true"></i>
+        </button>
     </form>
 @endif
 @if ($manualRequest)
     <p class="help-block" role="status">
-        <a href="{{ route('device-backups.backups.status', ['run' => $manualRequest->id]) }}">Manual backup #{{ $manualRequest->id }}</a>
+        <a href="{{ route('device-backups.backups.status', ['run' => $manualRequest->id]) }}">Manual backup
+            #{{ $manualRequest->id }}</a>
         @include('device-backups::partials.backup-status-badge', ['state' => $manualRequest->status])
         @if ($manualRequest->request_error)
             {{ $manualRequest->request_error }}

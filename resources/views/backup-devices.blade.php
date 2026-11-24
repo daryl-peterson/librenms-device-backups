@@ -1,5 +1,19 @@
 @extends('layouts.librenmsv1')
 
+@push('styles')
+    <style>
+        .backup-device-actions .btn {
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 34px;
+            padding: 0;
+        }
+    </style>
+@endpush
+
 @section('content')
     @component($plugin->name . '::layouts.panel', ['wide' => true, 'plugin' => $plugin])
         <div style="font-size: 1.1em; font-weight: 600; margin-bottom: .5em;">Backups by Device</div>
@@ -31,13 +45,21 @@
                         <tr>
                             <td><a href="{{ route('device.overview', ['device' => $device->getKey()]) }}">{{ $device->hostname }}</a></td>
                             <td>{{ $device->disabled ? 'Disabled device' : ($device->backup_enrolled ? 'Enrolled' : 'Not enrolled') }}</td>
-                            <td>@include('device-backups::partials.backup-status-badge', ['state' => $attempt?->status])</td>
+                            <td>@include($plugin->name . '::partials.backup-status-badge', ['state' => $attempt?->status])</td>
                             <td>{{ $attempt?->run_started_at ?? '—' }}</td>
-                            <td>
-                                <a href="{{ route($plugin->name . '.backups.history', ['device' => $device->getKey()]) }}">View Backups</a>
-                                <span aria-hidden="true"> · </span>
-                                <a href="{{ route($plugin->name . '.backups.ssh.edit', ['device' => $device->getKey()]) }}">SSH Settings</a>
-                                @include('device-backups::partials.run-backup', [
+                            <td class="backup-device-actions">
+                                <a href="{{ route($plugin->name . '.backups.history', ['device' => $device->getKey()]) }}"
+                                    class="btn btn-primary mr-3" role="button" title="Backup History" aria-label="Backup History">
+                                    <i class="fa fa-eye fa-lg" aria-hidden="true"></i>
+                                </a>
+
+
+                                <a href="{{ route($plugin->name . '.backups.ssh.edit', ['device' => $device->getKey()]) }}"
+                                    class="btn btn-info mr-3" role="button" title="SSH Settings" aria-label="SSH Settings">
+                                    <i class="fa fa-cogs fa-lg" aria-hidden="true"></i>
+                                </a>
+
+                                @include($plugin->name . '::partials.run-backup', [
                                     'deviceId' => $device->getKey(),
                                     'canStartBackup' => !$device->disabled && $device->backup_enrolled,
                                     'manualRequest' => $pendingRequests->get($device->getKey()),
