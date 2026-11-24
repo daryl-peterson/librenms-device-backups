@@ -163,6 +163,7 @@ class PluginController extends Controller {
         ];
         if ($save) {
             $rules['backup_report_email'] = ['nullable', 'email', 'max:254'];
+            $rules['backups_per_device'] = ['sometimes', 'required', 'integer', 'min:0'];
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -297,7 +298,7 @@ class PluginController extends Controller {
 
         $redirect = redirect()->route("$plugin.settings")->with($status, $message);
         if (!$save || $status === 'error') {
-            $fields = ['database', 'host', 'port', 'username', 'backup_report_email'];
+            $fields = ['database', 'host', 'port', 'username', 'backup_report_email', 'backups_per_device'];
             $redirect->withInput(array_filter($request->only($fields), 'is_scalar'));
         }
 

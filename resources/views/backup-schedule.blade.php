@@ -15,7 +15,7 @@
 
         <p>
             @if ($nextRun)
-                Next run <strong>{{ $nextRun->format('D, M j, Y \a\t g:i A T') }}</strong>
+                Next run <strong>{{ \DRP\DeviceBackups\Helper::localTime($nextRun, 'D, M j, Y \a\t g:i A T') }}</strong>
             @else
                 Scheduled backups are paused.
             @endif

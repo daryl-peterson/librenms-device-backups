@@ -2,12 +2,19 @@
 
 namespace DRP\DeviceBackups\Tests\Database;
 
+use DateTimeImmutable;
 use Dom\HTMLDocument;
+use DRP\DeviceBackups\Backup\Archives;
 use DRP\DeviceBackups\Backup\BackupStore;
+use DRP\DeviceBackups\Backup\ManualBackupRequests;
 use DRP\DeviceBackups\Controllers\BackupController;
+use DRP\DeviceBackups\Helper;
 use DRP\DeviceBackups\Tests\Support\PluginTestCase;
+use DRP\DeviceBackups\Tests\Support\UserFixture;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\View\View;
 use PHPUnit\Framework\Attributes\DataProvider;
 use ReflectionClass;
@@ -139,6 +146,126 @@ final class BackupAttemptsTest extends PluginTestCase {
         self::assertSame('Run', trim($historyDocument->querySelector('th')->textContent));
     }
 
+    public function testDeviceHistorySortsRunNumbersAndShowsViewerTime(): void {
+        $this->registerViewFixtures();
+        $this->session->put('preferences.timezone', 'America/Chicago');
+        $device = $this->device(['hostname' => 'edge-01']);
+        $store = new BackupStore();
+        $first = $store->start();
+        $second = $store->start();
+        DB::table('device_backup_runs')->where('id', $first)->update(['started_at' => '2026-11-24 00:00:01']);
+        $result = ['device_id' => $device->getKey(), 'hostname' => $device->hostname, 'status' => 'failed'];
+        $store->record($result + ['run_id' => $first]);
+        $store->record($result + ['run_id' => $second]);
+        $this->request('/?sort=run&direction=asc');
+        $view = (new BackupController())->history($device->getKey(), new ManualBackupRequests());
+
+        self::assertSame([$first, $second], $view->getData()['results']->getCollection()->pluck('run_id')->all());
+        $document = HTMLDocument::createFromString($view->with('errors', new ViewErrorBag())->render(), LIBXML_NOERROR);
+        $table = $document->querySelector('#backup-attempts table');
+        self::assertCount(6, $table->querySelectorAll('th a'));
+        self::assertStringContainsString('2026-11-23 18:00:01', $table->querySelector('tbody tr')->textContent);
+        $runHeading = $table->querySelector('th[aria-sort=ascending] a');
+        self::assertSame('Run', trim($runHeading->textContent));
+        self::assertSame(route('device-backups.backups.history', [
+            'device' => $device->getKey(), 'sort' => 'run', 'direction' => 'desc',
+        ]) . '#backup-attempts', $runHeading->getAttribute('href'));
+    }
+
+    public function testLocalTimePreservesTheInstantAndFallsBackToAppTimezone(): void {
+        config(['app.timezone' => 'America/Chicago']);
+        $timestamp = new DateTimeImmutable('2026-07-24T01:00:00+02:00');
+        self::assertSame('2026-07-23 18:00:00', Helper::localTime($timestamp));
+        self::assertSame('—', Helper::localTime(null));
+
+        $this->session->put('preferences.timezone', 'America/New_York');
+        self::assertSame('2026-07-23 19:00:00 EDT', Helper::localTime($timestamp, 'Y-m-d H:i:s T'));
+    }
+
+    public function testComparisonShowsEscapedChangesFromTheTwoLatestRetainedBackups(): void {
+        $this->registerViewFixtures();
+        $device = $this->device();
+        $store = new BackupStore();
+        $this->recordConfig($store, $device->getKey(), "hostname expired\n");
+        $previous = $this->recordConfig($store, $device->getKey(), "hostname old\n");
+        $store->record([
+            'run_id' => $store->start(), 'device_id' => $device->getKey(),
+            'hostname' => $device->hostname, 'profile' => 'ios', 'status' => 'failed',
+        ]);
+        $latest = $this->recordConfig($store, $device->getKey(), "hostname <script>\n", 2);
+        $this->recordConfig($store, $device->getKey() + 1, "hostname other-device\n");
+        $controller = new BackupController();
+
+        $history = $controller->history($device->getKey(), new ManualBackupRequests());
+        $historyHtml = $history->with('errors', new ViewErrorBag())->render();
+        self::assertStringContainsString(route('device-backups.backups.compare', ['device' => $device->getKey()]), $historyHtml);
+        self::assertStringContainsString('Compare Latest with Previous', $historyHtml);
+
+        $response = $controller->compare($device->getKey());
+        self::assertSame(200, $response->getStatusCode());
+        self::assertTrue($response->headers->hasCacheControlDirective('no-store'));
+        $html = $response->getContent();
+        self::assertStringContainsString("Run #$previous", $html);
+        self::assertStringContainsString("Run #$latest", $html);
+        self::assertStringContainsString('-hostname old', $html);
+        self::assertStringContainsString('+hostname &lt;script&gt;', $html);
+        self::assertStringNotContainsString('+hostname <script>', $html);
+        self::assertStringNotContainsString('hostname expired', $html);
+        self::assertStringNotContainsString('hostname other-device', $html);
+    }
+
+    public function testComparisonHandlesInsufficientBackupsAndIdenticalConfigurations(): void {
+        $this->registerViewFixtures();
+        $device = $this->device();
+        $store = new BackupStore();
+        $controller = new BackupController();
+        $this->recordConfig($store, $device->getKey(), "hostname same\r\n");
+        $this->assertHttpError(404, fn () => $controller->compare($device->getKey()));
+
+        $this->recordConfig($store, $device->getKey(), "hostname same\n");
+        $response = $controller->compare($device->getKey());
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('No configuration changes.', $response->getContent());
+    }
+
+    public function testComparisonRequiresDeviceVisibility(): void {
+        $device = $this->device();
+        $this->user = new UserFixture(['id' => 2, 'role' => 'admin', 'hiddenDevice' => $device->getKey()]);
+
+        $this->expectException(AuthorizationException::class);
+        (new BackupController())->compare($device->getKey());
+    }
+
+    public function testComparisonDoesNotShowConfigurationWhenDecryptionFails(): void {
+        $this->registerViewFixtures();
+        $device = $this->device();
+        $store = new BackupStore();
+        $this->recordConfig($store, $device->getKey(), "hostname previous\n");
+        $this->recordConfig($store, $device->getKey(), "hostname latest\n");
+        $controller = new BackupController();
+        config(['device-backups.archive_password' => 'wrong password']);
+        $response = $controller->compare($device->getKey());
+        self::assertSame(422, $response->getStatusCode());
+        self::assertTrue($response->headers->hasCacheControlDirective('no-store'));
+        self::assertStringContainsString('Could not decrypt the configuration', $response->getContent());
+        self::assertStringNotContainsString('hostname latest', $response->getContent());
+        self::assertStringNotContainsString('hostname previous', $response->getContent());
+    }
+
+    private function recordConfig(BackupStore $store, int $device, string $configuration, int $archiveLimit = 0): int {
+        $run = $store->start();
+        $source = $this->path("config-$run.txt");
+        $archive = $this->path("archive-$run.zip");
+        file_put_contents($source, $configuration);
+        $checksum = Archives::zip($archive, $source, 'running-config.txt', config('device-backups.archive_password'));
+        $store->record([
+            'run_id' => $run, 'device_id' => $device, 'hostname' => 'edge.example.test',
+            'profile' => 'ios', 'status' => 'success', 'sha256' => $checksum, 'archive_bytes' => filesize($archive),
+        ], $archive, $archiveLimit);
+
+        return $run;
+    }
+
     private function backupStatus(array $query): View {
         return (new BackupController())->status($this->request('/?' . http_build_query($query)));
     }
@@ -153,6 +280,7 @@ final class BackupAttemptsTest extends PluginTestCase {
 
         app()->instance('session', $this->session);
         app('router')->get('/plugin/{plugin}', static fn () => '')->name('plugin.page');
+        app('router')->get('/device/{device}', static fn () => '')->name('device.overview');
         app('router')->getRoutes()->refreshNameLookups();
     }
 }

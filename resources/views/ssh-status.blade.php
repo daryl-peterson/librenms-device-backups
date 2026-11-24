@@ -20,7 +20,7 @@
                     <tr>
                         <th scope="col">Device</th>
                         <th scope="col">Last SSH Result</th>
-                        <th scope="col">Last Checked (UTC)</th>
+                        <th scope="col">Last Checked</th>
                         <th scope="col">Actions</th>
                     </tr>
                 </thead>
@@ -38,7 +38,7 @@
                                 @endif
                             </td>
                             <td>@include('device-backups::partials.ssh-state')</td>
-                            <td>{{ $check['checked_at'] ?? '—' }}</td>
+                            <td>{{ \DRP\DeviceBackups\Helper::localTime($check['checked_at'] ?? null) }}</td>
                             <td>
                                 <a class="btn btn-default btn-sm"
                                     href="{{ route('device-backups.backups.ssh.edit', ['device' => $device->getKey()]) }}">

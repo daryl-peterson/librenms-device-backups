@@ -37,6 +37,47 @@ final class BackupStoreTest extends DatabaseTestCase {
         }
     }
 
+    public function testRetentionKeepsTheNewestArchivesAndPreservesAttemptHistory(): void {
+        $store = new BackupStore();
+        [$archive, $metadata] = $this->backupFixture($store);
+        $oldest = $store->record($metadata, $archive);
+        $older = $store->record($metadata, $archive);
+        $newer = $store->record($metadata, $archive);
+        $otherDevice = $store->record(array_replace($metadata, ['device_id' => 18]), $archive);
+        $failed = $store->record(array_replace($metadata, [
+            'status' => 'failed', 'sha256' => null, 'archive_bytes' => null,
+        ]), archiveLimit: 2);
+        self::assertNotNull($store->findDownload(12, $oldest));
+
+        $newest = $store->record($metadata, $archive, archiveLimit: 2);
+
+        self::assertSame($newest, $store->findDownload(12)?->id);
+        self::assertNotNull($store->findDownload(12, $newer));
+        self::assertNotNull($store->findDownload(18, $otherDevice));
+        self::assertNull($store->findDownload(12, $oldest));
+        self::assertNull($store->findDownload(12, $older));
+        self::assertSame(0, DB::table('device_backup_chunks')->whereIn('result_id', [$oldest, $older])->count());
+        self::assertSame([$newest, $failed, $newer, $older, $oldest], $store->results(device: 12)->getCollection()->pluck('id')->all());
+        self::assertSame([$newest, $newer, $failed, $older, $oldest], $store->results(device: 12, sort: 'archive')->getCollection()->pluck('id')->all());
+        self::assertSame(5, $store->runs()->items()[0]->succeeded);
+    }
+
+    public function testUnverifiedArchiveDoesNotExpireAnOlderBackup(): void {
+        $store = new BackupStore();
+        [$archive, $metadata] = $this->backupFixture($store);
+        $previous = $store->record($metadata, $archive);
+        $metadata['sha256'] = str_repeat('0', 64);
+
+        $this->expectException(BackupFailure::class);
+        try {
+            $store->record($metadata, $archive, archiveLimit: 1);
+        } finally {
+            self::assertSame($previous, $store->findDownload(12)?->id);
+            self::assertSame(1, DB::table('device_backup_results')->count());
+            self::assertGreaterThan(0, DB::table('device_backup_chunks')->where('result_id', $previous)->count());
+        }
+    }
+
     public function testCorruptedChunksAreNeverPublishedAsAnExport(): void {
         $store = new BackupStore();
         [$archive, $metadata] = $this->backupFixture($store);

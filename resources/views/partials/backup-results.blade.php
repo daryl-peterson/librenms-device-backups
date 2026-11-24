@@ -3,7 +3,7 @@
     $columns = array_filter([
         'device' => $showDevice ? 'Device' : null,
         'run' => $showRun ? 'Run' : null,
-        'started' => isset($formatRunStarted) ? 'Run started' : 'Run started (UTC)',
+        'started' => 'Run started',
         'profile' => 'Profile',
         'status' => 'Status',
         'details' => 'Details',
@@ -18,15 +18,25 @@
                 @foreach ($columns as $column => $label)
                     @php
                         $sortable =
-                            isset($attemptSortUrl) && isset(\DRP\DeviceBackups\Backup\BackupStore::RESULT_SORT_COLUMNS[$column]);
-                        $sorted = $sortable && $attemptSort === $column;
+                            isset($sortRoute) && isset(\DRP\DeviceBackups\Backup\BackupStore::RESULT_SORT_COLUMNS[$column])
+                            && ($column !== 'archive' || ($sortArchive ?? false));
+                        $sorted = $sortable && $sort === $column;
                     @endphp
                     <th scope="col"
-                        @if ($sorted) aria-sort="{{ $attemptDirection === 'asc' ? 'ascending' : 'descending' }}" @endif>
+                        @if ($sorted) aria-sort="{{ $direction === 'asc' ? 'ascending' : 'descending' }}" @endif>
                         @if ($sortable)
-                            <a href="{{ $attemptSortUrl($column) }}">
+                            @php
+                                $nextDirection = $sorted
+                                    ? ($direction === 'asc' ? 'desc' : 'asc')
+                                    : \DRP\DeviceBackups\Backup\BackupStore::defaultSortDirection($column);
+                                $sortUrl = route($sortRoute, array_replace($sortQuery, [
+                                    'sort' => $column,
+                                    'direction' => $nextDirection,
+                                ]));
+                            @endphp
+                            <a href="{{ $sortUrl }}#backup-attempts">
                                 {{ $label }}
-                                <i class="fa {{ $sorted ? 'fa-sort-' . $attemptDirection : 'fa-sort' }}" aria-hidden="true"></i>
+                                <i class="fa {{ $sorted ? 'fa-sort-' . $direction : 'fa-sort' }}" aria-hidden="true"></i>
                             </a>
                         @else
                             {{ $label }}
@@ -48,7 +58,7 @@
                                 href="{{ route('device-backups.backups.status', ['run' => $result->run_id]) }}">#{{ $result->run_id }}</a>
                         </td>
                     @endif
-                    <td>{{ isset($formatRunStarted) ? $formatRunStarted($result->run_started_at) : $result->run_started_at }}</td>
+                    <td>{{ \DRP\DeviceBackups\Helper::localTime($result->run_started_at) }}</td>
                     <td>{{ $result->profile ?? '—' }}</td>
                     <td>@include('device-backups::partials.backup-status-badge', ['state' => $result->status])</td>
                     <td>{{ $result->error ?? '—' }}</td>

@@ -18,7 +18,7 @@
         <p>
             @include('device-backups::partials.ssh-state')
             @if ($check)
-                <span class="text-muted">{{ $check['checked_at'] }} UTC</span>
+                <span class="text-muted">{{ \DRP\DeviceBackups\Helper::localTime($check['checked_at']) }}</span>
             @endif
         </p>
 

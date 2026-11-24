@@ -96,6 +96,10 @@ class PluginSettings {
                 $settings['backup_report_email'] = $formSettings['backup_report_email'];
             }
 
+            if (array_key_exists('backups_per_device', $formSettings)) {
+                $settings['backups_per_device'] = (int) $formSettings['backups_per_device'];
+            }
+
             return $settings;
         });
     }

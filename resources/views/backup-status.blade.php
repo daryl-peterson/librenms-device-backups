@@ -2,10 +2,6 @@
 
 @section('content')
     @php
-        $timezone = session('preferences.timezone') ?: config('app.timezone');
-        $formatLocalTime = static fn(?string $timestamp): string => $timestamp === null
-            ? '—'
-            : \Carbon\CarbonImmutable::parse($timestamp, 'UTC')->setTimezone($timezone)->format('Y-m-d H:i:s');
         $attemptQuery = [
             'run' => $run,
             'status' => $status,
@@ -14,14 +10,6 @@
             'direction' => $direction,
             'runs_page' => $runs->currentPage() > 1 ? $runs->currentPage() : null,
         ];
-        $attemptSortUrl = static fn(string $column): string => route(
-            'device-backups.backups.status',
-            array_replace($attemptQuery, [
-                'sort' => $column,
-                'direction' =>
-                    $column === $sort ? ($direction === 'asc' ? 'desc' : 'asc') : ($column === 'started' ? 'desc' : 'asc'),
-            ]),
-        ) . '#backup-attempts';
     @endphp
 
     @component($plugin->name . '::layouts.panel', ['wide' => true, 'plugin' => $plugin])
@@ -54,8 +42,8 @@
                                         </small>
                                     @endif
                                 </td>
-                                <td>{{ $entry->status === 'queued' ? '—' : $formatLocalTime($entry->started_at) }}</td>
-                                <td>{{ $formatLocalTime($entry->finished_at) }}</td>
+                                <td>{{ $entry->status === 'queued' ? '—' : \DRP\DeviceBackups\Helper::localTime($entry->started_at) }}</td>
+                                <td>{{ \DRP\DeviceBackups\Helper::localTime($entry->finished_at) }}</td>
                                 <td>@include($plugin->name . '::partials.backup-status-badge', [
                                     'state' => $entry->status,
                                 ])</td>
@@ -83,7 +71,7 @@
 
             @if ($selectedRun?->requested_at)
                 <p>
-                    Requested {{ $formatLocalTime($selectedRun->requested_at) }}
+                    Requested {{ \DRP\DeviceBackups\Helper::localTime($selectedRun->requested_at) }}
                     @include($plugin->name . '::partials.backup-status-badge', ['state' => $selectedRun->status])
                 </p>
                 @if ($selectedRun->request_error)
@@ -119,10 +107,8 @@
             @include($plugin->name . '::partials.backup-results', [
                 'showDevice' => true,
                 'showRun' => false,
-                'formatRunStarted' => $formatLocalTime,
-                'attemptSortUrl' => $attemptSortUrl,
-                'attemptSort' => $sort,
-                'attemptDirection' => $direction,
+                'sortRoute' => 'device-backups.backups.status',
+                'sortQuery' => $attemptQuery,
             ])
         </fieldset>
     @endcomponent

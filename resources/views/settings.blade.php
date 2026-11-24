@@ -61,6 +61,15 @@
                     disable reports.</p>
             </div>
 
+            <div class="form-group">
+                <label for="backups_per_device">Backups to Keep per Device</label>
+                <input type="number" class="form-control" id="backups_per_device" name="backups_per_device"
+                    min="0" step="1" required value="{{ old('backups_per_device', $plugin->settings['backups_per_device'] ?? 0) }}"
+                    aria-describedby="backups-per-device-help">
+                <p class="help-block" id="backups-per-device-help">Enter 0 to keep all backups. After each successful backup,
+                    older archives above the limit are permanently deleted for that device. Attempt history is retained.</p>
+            </div>
+
             <button type="submit" class="btn btn-primary pull-right">Test and Save Settings</button>
             <button id="device-backups-dbtest" type="submit" class="btn btn-primary pull-right" style="margin-right: 10px"
                 data-test-progress="Testing database connection…" data-test-fields="_token database host port username password"

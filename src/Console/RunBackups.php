@@ -177,6 +177,7 @@ final class RunBackups extends Command {
 
     private function collect(BackupStore $store, Builder $targets, string $work, #[\SensitiveParameter] string $password, int $reserve, ?string $recipient, ?int $request): int {
         $run = $request ?? $store->start();
+        $archiveLimit = (int) (PluginData::getSettings()['backups_per_device'] ?? 0);
         $failures = [];
         $success = 0;
         $failure = 0;
@@ -187,7 +188,7 @@ final class RunBackups extends Command {
                 $result = $this->backupDevice($device, $work, $password, $reserve, $archive);
                 $result['run_id'] = $run;
                 try {
-                    $id = $store->record($result, $result['status'] === 'success' ? $archive : null);
+                    $id = $store->record($result, $result['status'] === 'success' ? $archive : null, $archiveLimit);
                 } catch (Throwable) {
                     $result['status'] = 'failed';
                     $result['error'] = 'Could not store the backup in the database.';

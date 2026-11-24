@@ -6,7 +6,7 @@
     </div>
     <div class="panel-body">
         @if ($latest)
-            <p>Latest successful backup from run #{{ $latest->run_id }} ({{ $latest->run_started_at }} UTC).</p>
+            <p>Latest successful backup from run #{{ $latest->run_id }} ({{ \DRP\DeviceBackups\Helper::localTime($latest->run_started_at) }}).</p>
             <a class="btn btn-primary btn-sm"
                 href="{{ route('device-backups.backups.latest', ['device' => $device->getKey()]) }}">Download Latest Backup</a>
         @elseif ($unavailable)

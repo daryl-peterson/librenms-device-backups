@@ -3,20 +3,22 @@
 namespace DRP\DeviceBackups\Controllers;
 
 use App\Models\Device;
-use Carbon\CarbonImmutable;
 
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+use DRP\DeviceBackups\Backup\BackupComparison;
 use DRP\DeviceBackups\Backup\BackupFailure;
 use DRP\DeviceBackups\Backup\BackupStore;
 use DRP\DeviceBackups\Backup\ManualBackupRequests;
 use DRP\DeviceBackups\Backup\Target;
+use DRP\DeviceBackups\Helper;
 use DRP\DeviceBackups\Middleware\RequireBackupDatabase;
 use DRP\DeviceBackups\PluginData;
 use DRP\DeviceBackups\TraitValidateAdmin;
@@ -55,12 +57,7 @@ final class BackupController extends Controller {
         $status = $request->query('status');
         $status = in_array($status, ['success', 'failed'], true) ? $status : null;
         $search = $this->searchTerm($request->query('search'));
-        $sort = $request->query('sort');
-        $sort = is_string($sort) && isset(BackupStore::RESULT_SORT_COLUMNS[$sort]) ? $sort : 'started';
-        $direction = $request->query('direction');
-        $direction = in_array($direction, ['asc', 'desc'], true)
-            ? $direction
-            : ($sort === 'started' ? 'desc' : 'asc');
+        [$sort, $direction] = $this->resultSort($request, ['run', 'archive']);
 
         $pname = $this->plugin->name;
 
@@ -126,9 +123,11 @@ final class BackupController extends Controller {
     public function history(int $device, ManualBackupRequests $requests): View|RedirectResponse {
         $store = $this->store();
         $model = $this->visibleDevice($device);
+        [$sort, $direction] = $this->resultSort(request(), ['device']);
 
         try {
-            $results = $store->results(device: $device);
+            $results = $store->results(device: $device, sort: $sort, direction: $direction)->fragment('backup-attempts');
+            $archives = $store->recentDownloads($device);
             $hostname = $model?->hostname ?? $store->latestAttempts([$device])->get($device)?->hostname;
             abort_if($hostname === null, 404);
 
@@ -138,7 +137,10 @@ final class BackupController extends Controller {
                 'deviceId' => $device,
                 'hostname' => $hostname,
                 'results' => $results,
-                'latest' => $store->findDownload($device),
+                'sort' => $sort,
+                'direction' => $direction,
+                'latest' => $archives->first(),
+                'canCompare' => BackupComparison::supports($archives->first(), $archives->get(1)),
                 'manualRequest' => $requests->pending($device) ?? $requests->latest($device),
                 'canStartBackup' => $model !== null && !$model->disabled && Target::revision($model) !== null,
             ]);
@@ -220,6 +222,39 @@ final class BackupController extends Controller {
      */
     public function latest(int $device): StreamedResponse {
         return $this->sendArchive($device);
+    }
+
+    public function compare(int $device): Response {
+        $store = $this->store();
+        $model = $this->visibleDevice($device);
+        $password = config('device-backups.archive_password');
+        $diff = null;
+        $error = null;
+
+        try {
+            $archives = $store->recentDownloads($device);
+            $latest = $archives->first();
+            $previous = $archives->get(1);
+            abort_unless($previous !== null, 404, 'Keep at least two successful backups to compare.');
+            if (!is_string($password) || $password === '') {
+                throw new BackupFailure('The backup archive password is unavailable.');
+            }
+            $diff = BackupComparison::compare($store, $previous, $latest, $password);
+        } catch (BackupFailure $e) {
+            $error = $e->getMessage();
+        } catch (QueryException) {
+            abort(503, 'The backup database is unavailable.');
+        }
+
+        return response()->view($this->plugin->name . '::backup-comparison', [
+            'plugin' => $this->plugin,
+            'deviceId' => $device,
+            'hostname' => $model?->hostname ?? $latest->hostname,
+            'previous' => $previous,
+            'latest' => $latest,
+            'diff' => $diff,
+            'error' => $error,
+        ], $error === null ? 200 : 422, ['Cache-Control' => 'private, no-store']);
     }
 
     /**
@@ -305,11 +340,19 @@ final class BackupController extends Controller {
 
         $name = trim(preg_replace('/[^A-Za-z0-9_.-]+/', '-', $name), '._-');
         $name = $name !== '' ? $name : "device-{$result->device_id}";
-        $date = CarbonImmutable::parse($result->run_started_at, 'UTC')
-            ->setTimezone(config('app.timezone'))
-            ->format('YmdHs');
+        $date = Helper::localTime($result->run_started_at, 'YmdHs');
 
         return "$name.$date.zip";
+    }
+
+    private function resultSort(Request $request, array $excludedColumns): array {
+        $sort = $request->query('sort');
+        if (!is_string($sort) || !isset(BackupStore::RESULT_SORT_COLUMNS[$sort]) || in_array($sort, $excludedColumns, true)) {
+            $sort = 'started';
+        }
+        $direction = $request->query('direction');
+
+        return [$sort, in_array($direction, ['asc', 'desc'], true) ? $direction : BackupStore::defaultSortDirection($sort)];
     }
 
     /**

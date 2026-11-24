@@ -12,6 +12,8 @@
 
 namespace DRP\DeviceBackups;
 
+use Carbon\CarbonImmutable;
+use DateTimeInterface;
 use Illuminate\Support\Facades\Auth;
 use function Illuminate\Support\minutes;
 use function Illuminate\Support\hours;
@@ -92,6 +94,20 @@ class Helper {
     public static function getDate($format = 'Y-m-d H:i:s'): string {
         $date = new DateTimeImmutable();
         return $date->format($format);
+    }
+
+    /** Format a backup timestamp for the current LibreNMS viewer. */
+    public static function localTime(string|DateTimeInterface|null $timestamp, string $format = 'Y-m-d H:i:s'): string {
+        if ($timestamp === null) {
+            return '—';
+        }
+
+        $request = request();
+        $timezone = $request->hasSession() ? $request->session()->get('preferences.timezone') : null;
+
+        return CarbonImmutable::parse($timestamp, 'UTC')
+            ->setTimezone($timezone ?: config('app.timezone'))
+            ->format($format);
     }
 
     /**

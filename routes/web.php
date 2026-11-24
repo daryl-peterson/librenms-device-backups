@@ -58,6 +58,7 @@ Route::middleware(['web', 'auth'])->prefix("plugin/$plugin/backups")->name("$plu
     Route::get('/devices/{device}', [BackupController::class, 'history'])->whereNumber('device')->name('history');
     Route::post('/devices/{device}/run', [BackupController::class, 'start'])->whereNumber('device')->name('start');
     Route::get('/devices/{device}/latest', [BackupController::class, 'latest'])->whereNumber('device')->name('latest');
+    Route::get('/devices/{device}/compare', [BackupController::class, 'compare'])->whereNumber('device')->name('compare');
     Route::get('/devices/{device}/download/{backup}', [BackupController::class, 'download'])
         ->whereNumber(['device', 'backup'])->name('download');
 });

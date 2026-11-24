@@ -35,7 +35,7 @@
                         <th scope="col">Device</th>
                         <th scope="col">Enrollment</th>
                         <th scope="col">Latest Attempt</th>
-                        <th scope="col">Run started (UTC)</th>
+                        <th scope="col">Run started</th>
                         <th scope="col">Actions</th>
                     </tr>
                 </thead>
@@ -46,7 +46,7 @@
                             <td><a href="{{ route('device.overview', ['device' => $device->getKey()]) }}">{{ $device->hostname }}</a></td>
                             <td>{{ $device->disabled ? 'Disabled device' : ($device->backup_enrolled ? 'Enrolled' : 'Not enrolled') }}</td>
                             <td>@include($plugin->name . '::partials.backup-status-badge', ['state' => $attempt?->status])</td>
-                            <td>{{ $attempt?->run_started_at ?? '—' }}</td>
+                            <td>{{ \DRP\DeviceBackups\Helper::localTime($attempt?->run_started_at) }}</td>
                             <td class="backup-device-actions">
                                 <a href="{{ route($plugin->name . '.backups.history', ['device' => $device->getKey()]) }}"
                                     class="btn btn-primary mr-3" role="button" title="Backup History" aria-label="Backup History">

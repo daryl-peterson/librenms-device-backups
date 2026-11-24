@@ -78,18 +78,33 @@ final class PluginControllerTest extends PluginTestCase {
         $controller = $this->controller();
         $controller->saveSettings($this->request('/', 'POST', self::CONNECTION + [
             'backup_report_email' => 'reports@example.test',
+            'backups_per_device' => '7',
         ]));
         $settings = (new PluginSettings())->all();
         self::assertSame(PluginDb::migrationVersion(), $settings['database_migrations']);
         self::assertSame('reports@example.test', $settings['backup_report_email']);
+        self::assertSame(7, $settings['backups_per_device']);
 
         $changed = array_replace(self::CONNECTION, ['password' => 'changed password', 'port' => 3308]);
         $controller->saveSettings($this->request('/', 'POST', $changed));
         $settings = (new PluginSettings())->all();
         self::assertSame(false, $settings['database_migrations']);
+        self::assertSame(7, $settings['backups_per_device']);
         self::assertArrayNotHasKey('password', $settings['database_connection']);
         self::assertSame('changed password', Crypt::decryptString($settings['database_connection']['encrypted_password']));
         self::assertStringContainsString('settings saved', $this->session->get('success'));
+    }
+
+    public function testRetentionRejectsNegativeLimitsAndAcceptsUnlimited(): void {
+        $this->saveDatabaseSettings();
+        $controller = $this->controller();
+        $controller->saveSettings($this->request('/', 'POST', self::CONNECTION + ['backups_per_device' => '-1']));
+        self::assertTrue($this->session->has('error'));
+        self::assertSame('-1', $this->session->getOldInput('backups_per_device'));
+        self::assertArrayNotHasKey('backups_per_device', (new PluginSettings())->all());
+
+        $controller->saveSettings($this->request('/', 'POST', self::CONNECTION + ['backups_per_device' => '0']));
+        self::assertSame(0, (new PluginSettings())->all()['backups_per_device']);
     }
 
     public function testFailedSaveDoesNotFlashThePassword(): void {

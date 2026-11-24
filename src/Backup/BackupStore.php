@@ -22,14 +22,20 @@ use Illuminate\Support\Facades\DB;
 final class BackupStore {
     public const RESULT_SORT_COLUMNS = [
         'device' => 'results.hostname',
+        'run' => 'results.run_id',
         'started' => 'runs.started_at',
         'profile' => 'results.profile',
         'status' => 'results.status',
         'details' => 'results.error',
+        'archive' => 'has_archive',
     ];
 
     private const CHUNK_SIZE = 48 * 1024;
     private Connection $db;
+
+    public static function defaultSortDirection(string $column): string {
+        return in_array($column, ['started', 'archive'], true) ? 'desc' : 'asc';
+    }
 
     public function __construct() {
         $this->db = DB::connection(PluginDb::getDbConnection());
@@ -68,12 +74,13 @@ final class BackupStore {
      *
      * @param array $result The result data to record.
      * @param string|null $archive The path to the encrypted archive, if any.
+     * @param int $archiveLimit The maximum stored archives for this device, or zero for unlimited.
      * @return int The ID of the recorded result.
      *
      * @since 0.0.1
      */
-    public function record(array $result, ?string $archive = null): int {
-        return $this->db->transaction(function () use ($result, $archive): int {
+    public function record(array $result, ?string $archive = null, int $archiveLimit = 0): int {
+        return $this->db->transaction(function () use ($result, $archive, $archiveLimit): int {
             $id = $this->db->table('device_backup_results')->insertGetId($result);
             if ($archive === null) {
                 return $id;
@@ -110,8 +117,26 @@ final class BackupStore {
                 throw new BackupFailure('The archive changed while being stored.');
             }
 
+            if ($archiveLimit > 0 && $result['status'] === 'success') {
+                $this->expireArchives($result['device_id'], $archiveLimit);
+            }
+
             return $id;
         });
+    }
+
+    private function expireArchives(int $device, int $limit): void {
+        $archives = $this->db->table('device_backup_results')
+            ->where('device_id', $device)->where('status', 'success')
+            ->whereNotNull('sha256')->where('archive_bytes', '>', 0);
+        $oldestKept = (clone $archives)->orderByDesc('id')->offset($limit - 1)->value('id');
+        if ($oldestKept === null) {
+            return;
+        }
+
+        $expired = $archives->where('id', '<', $oldestKept);
+        $this->db->table('device_backup_chunks')->whereIn('result_id', (clone $expired)->select('id'))->delete();
+        $expired->update(['sha256' => null, 'archive_bytes' => null]);
     }
     /**
      * Find a backup run by its ID.
@@ -177,6 +202,10 @@ final class BackupStore {
             });
         }
 
+        if ($sort === 'archive') {
+            $query->selectRaw("CASE WHEN results.status = 'success' AND results.sha256 IS NOT NULL
+                AND results.archive_bytes > 0 THEN 1 ELSE 0 END AS has_archive");
+        }
         if ($sort !== null && isset(self::RESULT_SORT_COLUMNS[$sort])) {
             $query->orderBy(self::RESULT_SORT_COLUMNS[$sort], $direction === 'asc' ? 'asc' : 'desc');
         }
@@ -214,6 +243,11 @@ final class BackupStore {
         return $this->downloadable()->where('results.device_id', $device)
             ->when($id !== null, fn(Builder $query) => $query->where('results.id', $id))
             ->orderByDesc('results.id')->first();
+    }
+
+    public function recentDownloads(int $device): Collection {
+        return $this->downloadable()->where('results.device_id', $device)
+            ->orderByDesc('results.id')->limit(2)->get();
     }
 
     /**
