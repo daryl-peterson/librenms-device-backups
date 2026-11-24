@@ -99,6 +99,12 @@ You can also export by backup ID from the CLI:
 
 The plugin verifies the stored checksum before delivering the ZIP. Open it with the archive password and follow the device or service's restore procedure.
 
+## Testing
+
+Run `composer install` from the plugin directory to install the test dependencies, then run `composer test` to execute the unit and database suites.
+
+With Xdebug enabled for PHP CLI, run `composer test:coverage` to measure coverage from the unit suite. Open `.coverage/html/index.html` for the HTML report or use `.coverage/clover.xml` with tools that read Clover reports.
+
 ## Screen Shots
 ![](screenshots/screen-shot-01.png)
 

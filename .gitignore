@@ -2,6 +2,7 @@
 .agents
 .aws
 .codex
+/.coverage/
 .docs
 .DS_Store
 .installed
@@ -10,4 +11,4 @@
 .phpunit.*
 .test-*
 /composer.lock
-
+tests/Unit/test.sh

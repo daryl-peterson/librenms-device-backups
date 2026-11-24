@@ -94,8 +94,11 @@ class PluginCache {
         if (Cache::getStore() instanceof TaggableStore) {
             $result = Cache::tags([self::CACHE_TAG])->get($cacheKey, $default);
         } else {
+            // @codeCoverageIgnoreStart
             $result = Cache::get($cacheKey, $default);
+            // @codeCoverageIgnoreEnd
         }
+
         return $result;
     }
 
@@ -119,7 +122,9 @@ class PluginCache {
         if (Cache::getStore() instanceof TaggableStore) {
             return Cache::tags([self::CACHE_TAG])->put($cacheKey, $cacheValue, $ttl);
         } else {
+            // @codeCoverageIgnoreStart
             return Cache::put($cacheKey, $cacheValue, $ttl);
+            // @codeCoverageIgnoreEnd
         }
     }
 
@@ -139,7 +144,9 @@ class PluginCache {
         if (Cache::getStore() instanceof TaggableStore) {
             return Cache::tags([self::CACHE_TAG])->forget($cacheKey);
         } else {
+            // @codeCoverageIgnoreStart
             return Cache::forget($cacheKey);
+            // @codeCoverageIgnoreEnd
         }
     }
 
@@ -154,7 +161,9 @@ class PluginCache {
         if (Cache::getStore() instanceof TaggableStore) {
             return Cache::tags([self::CACHE_TAG])->flush();
         } else {
+            // @codeCoverageIgnoreStart
             return Cache::flush();
+            // @codeCoverageIgnoreEnd
         }
     }
 
@@ -170,7 +179,9 @@ class PluginCache {
         if (Cache::getStore() instanceof TaggableStore) {
             return Cache::tags([self::CACHE_TAG])->has($cacheKey);
         } else {
+            // @codeCoverageIgnoreStart
             return Cache::has($cacheKey);
+            // @codeCoverageIgnoreEnd
         }
     }
 

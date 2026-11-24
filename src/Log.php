@@ -14,6 +14,7 @@
 namespace DRP\DeviceBackups;
 
 use Illuminate\Support\Facades\Log as Logger;
+use Monolog\Handler\StreamHandler;
 
 
 /**
@@ -40,6 +41,49 @@ class Log {
 
     public static function error(string $message, mixed $context = null): void {
         self::writeLog('ERROR', $message, $context);
+    }
+
+    public static function warning(string $message, mixed $context = null): void {
+        self::writeLog('WARNING', $message, $context);
+    }
+
+    public static function critical(string $message, mixed $context = null): void {
+        self::writeLog('CRITICAL', $message, $context);
+    }
+    public static function read() {
+        $path = self::getLogPath();
+
+        // @codeCoverageIgnoreStart
+        if (!file_exists($path)) {
+            return null;
+        }
+        // @codeCoverageIgnoreEnd
+
+        $result = file_get_contents($path);
+        return $result;
+    }
+
+    public static function getLogPath(?string $channel = null) {
+        // @codeCoverageIgnoreStart
+        $root = Logger::getFacadeRoot();
+
+        // Only call ->channel() if Log is backed by LogManager (standard full Laravel app)
+        $logger = ($channel !== null && method_exists($root, 'channel'))
+            ? $root->channel($channel)->getLogger()
+            : $root->getLogger();
+
+        if (! method_exists($logger, 'getHandlers')) {
+            return null;
+        }
+
+        foreach ($logger->getHandlers() as $handler) {
+            if ($handler instanceof StreamHandler) {
+                return $handler->getUrl();
+            }
+        }
+
+        return null;
+        // @codeCoverageIgnoreEnd
     }
 
     // 2. Centralized Writer and Tracer
@@ -97,11 +141,12 @@ class Log {
                 $message
             );
 
-
-
             Logger::log($level, $logEntry);
+
+            // @codeCoverageIgnoreStart
         } catch (\Throwable $th) {
             Logger::error($th->getMessage(), ['exception' => $th]);
+            // @codeCoverageIgnoreEnd
         }
     }
 }

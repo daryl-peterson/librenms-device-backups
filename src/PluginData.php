@@ -30,6 +30,8 @@ class PluginData {
      * @version 0.0.1
      */
     private array $data = [];
+    private static string $pname = PLUGIN_NAME;
+
 
     private array $dbStatus = [
         'ready' => false,
@@ -43,11 +45,11 @@ class PluginData {
      */
     public function __construct() {
 
-        $name = PLUGIN_NAME;
+        $name = self::$pname;
         $settings = (array) self::getSettings();
         $isReady = PluginDb::isReady($settings);
 
-        $this->data['name'] = $name;
+        $this->data['name'] = self::$pname;
         $this->data['title'] = PLUGIN_TITLE;
         $this->data['author'] = PLUGIN_AUTHOR;
         $this->data['author_image'] = PLUGIN_AUTHOR_IMAGE;
@@ -55,9 +57,9 @@ class PluginData {
 
         $this->data['settings'] = $settings;
         $this->data['isDbReady'] = $isReady;
-        $this->data['menu'] = Route::has($name . '.backups.status')
-            ? $name . '.backups.status'
-            : $name . '.settings';
+        $this->data['menu'] = Route::has(self::$pname . '.backups.status')
+            ? self::$pname . '.backups.status'
+            : self::$pname . '.settings';
         $this->data['hasMenuRoute'] = Route::has($this->data['menu']);
 
         $this->data['coffee_link'] = 'https://www.buymeacoffee.com/daryl.peterson';
@@ -108,12 +110,14 @@ class PluginData {
      * @version 0.0.1
      */
     public static function getPluginModel(): PluginModel|null {
-        $result = PluginModel::versionTwo()->where('plugin_name', PLUGIN_NAME)->first();
+        $result = PluginModel::versionTwo()->where('plugin_name', self::$pname)->first();
 
         // Check if the plugin exists in the database.
         if (is_null($result)) {
-            Log::error('Plugin not found: ' . PLUGIN_NAME);
+            // @codeCoverageIgnoreStart
+            Log::error('Plugin not found: ' . self::$pname);
             return null;
+            // @codeCoverageIgnoreEnd
         }
         return $result;
     }

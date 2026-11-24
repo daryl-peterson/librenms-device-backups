@@ -4,7 +4,7 @@
 
     <div>
         <strong>Author</strong> : {{ $plugin->author }}<br>
-        <strong>Version</strong> : {{ $plugin->version }}<br>
+        <strong>Version</strong> : {{ $plugin->ver }}<br>
         <div style="margin-top: 4px;">
             <strong>Buy Me Coffee</strong> :
             <a href="{{ $plugin->coffee_link }}" target="_blank" style="display: block; margin-top: 6px;">

@@ -7,6 +7,15 @@ use DRP\DeviceBackups\Backup\BackupFailure;
 use DRP\DeviceBackups\Tests\Support\TemporaryFilesTestCase;
 use ZipArchive;
 
+/**
+ * LibreNMS Device Backups Archives Test.
+ *
+ * @package     device-backups
+ * @author      Daryl Peterson <@gmail.com>
+ * @license     https://opensource.org MIT License
+ * @link        https://github.com/daryl-peterson/
+ * @since       0.0.1
+ */
 final class ArchivesTest extends TemporaryFilesTestCase {
     public function testCreatesAnAes256ZipWithVerifiableContents(): void {
         Archives::verifyAvailable();

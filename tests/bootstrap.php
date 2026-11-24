@@ -2,5 +2,6 @@
 
 require dirname(__DIR__) . '/.test-vendor/autoload.php';
 
-// LibreNMS provides this model in production. These tests only need device data and attributes.
+// LibreNMS provides these models in production.
 class_alias(DRP\DeviceBackups\Tests\Support\DeviceFixture::class, App\Models\Device::class);
+class_alias(DRP\DeviceBackups\Tests\Support\PluginFixture::class, App\Models\Plugin::class);

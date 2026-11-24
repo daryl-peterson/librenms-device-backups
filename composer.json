@@ -52,7 +52,11 @@
         }
     },
     "scripts": {
-        "test": "phpunit"
+        "test": "phpunit",
+        "test:coverage": [
+            "@putenv XDEBUG_MODE=coverage",
+            "@php .test-vendor/bin/phpunit --testsuite unit --coverage-html .coverage/html --coverage-clover .coverage/clover.xml"
+        ]
     },
     "config": {
         "vendor-dir": ".test-vendor"
