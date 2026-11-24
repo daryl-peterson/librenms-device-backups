@@ -16,7 +16,7 @@ const PLUGIN_NAME           = 'device-backups';
 const PLUGIN_TITLE          = 'Device Backups';
 const PLUGIN_AUTHOR         = 'Daryl Peterson';
 const PLUGIN_AUTHOR_IMAGE   = 'https://avatars.githubusercontent.com/u/13834451?s=400&u=ff8417db6126da8d9ff82822ea0be5897ad744b3&v=4';
-const PLUGIN_VER            = 'v0.2.12-alpha';
+const PLUGIN_VER            = 'v0.2.13-alpha';
 const PLUGIN_PATH           = 'vendor/daryl-peterson/librenms-device-backups/';
 
 
