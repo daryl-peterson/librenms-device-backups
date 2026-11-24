@@ -20,6 +20,14 @@ use Illuminate\Support\Facades\DB;
  * @since       0.0.1
  */
 final class BackupStore {
+    public const RESULT_SORT_COLUMNS = [
+        'device' => 'results.hostname',
+        'started' => 'runs.started_at',
+        'profile' => 'results.profile',
+        'status' => 'results.status',
+        'details' => 'results.error',
+    ];
+
     private const CHUNK_SIZE = 48 * 1024;
     private Connection $db;
 
@@ -140,16 +148,40 @@ final class BackupStore {
      * @param int|null $device The device ID to filter by.
      * @param int|null $run The run ID to filter by.
      * @param string|null $status The status to filter by.
+     * @param string $search A substring of the hostname, profile, or details.
+     * @param string|null $sort The result column key to sort by.
+     * @param string $direction The sort direction.
      * @return Paginator
      *
      * @since 0.0.1
      */
-    public function results(?int $device = null, ?int $run = null, ?string $status = null): Paginator {
-        return $this->resultDetails()
+    public function results(
+        ?int $device = null,
+        ?int $run = null,
+        ?string $status = null,
+        string $search = '',
+        ?string $sort = null,
+        string $direction = 'desc',
+    ): Paginator {
+        $query = $this->resultDetails()
             ->when($device !== null, fn(Builder $query) => $query->where('results.device_id', $device))
             ->when($run !== null, fn(Builder $query) => $query->where('results.run_id', $run))
-            ->when($status !== null, fn(Builder $query) => $query->where('results.status', $status))
-            ->orderByDesc('results.id')->simplePaginate(25)->withQueryString();
+            ->when($status !== null, fn(Builder $query) => $query->where('results.status', $status));
+
+        if ($search !== '') {
+            $pattern = '%' . strtr(mb_strtolower($search), ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+            $query->where(function (Builder $query) use ($pattern): void {
+                $query->whereRaw("LOWER(results.hostname) LIKE ? ESCAPE '!'", [$pattern])
+                    ->orWhereRaw("LOWER(results.profile) LIKE ? ESCAPE '!'", [$pattern])
+                    ->orWhereRaw("LOWER(results.error) LIKE ? ESCAPE '!'", [$pattern]);
+            });
+        }
+
+        if ($sort !== null && isset(self::RESULT_SORT_COLUMNS[$sort])) {
+            $query->orderBy(self::RESULT_SORT_COLUMNS[$sort], $direction === 'asc' ? 'asc' : 'desc');
+        }
+
+        return $query->orderByDesc('results.id')->simplePaginate(25)->withQueryString();
     }
 
     /**

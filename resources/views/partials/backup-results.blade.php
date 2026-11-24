@@ -1,20 +1,36 @@
-@php($showRun = $showRun ?? true)
+@php
+    $showRun = $showRun ?? true;
+    $columns = array_filter([
+        'device' => $showDevice ? 'Device' : null,
+        'run' => $showRun ? 'Run' : null,
+        'started' => isset($formatRunStarted) ? 'Run started (local time)' : 'Run started (UTC)',
+        'profile' => 'Profile',
+        'status' => 'Status',
+        'details' => 'Details',
+        'archive' => 'Archive',
+    ]);
+@endphp
 
 <div class="table-responsive">
     <table class="table table-striped">
         <thead>
             <tr>
-                @if ($showDevice)
-                    <th scope="col">Device</th>
-                @endif
-                @if ($showRun)
-                    <th scope="col">Run</th>
-                @endif
-                <th scope="col">Run started ({{ isset($formatRunStarted) ? 'local time' : 'UTC' }})</th>
-                <th scope="col">Profile</th>
-                <th scope="col">Status</th>
-                <th scope="col">Details</th>
-                <th scope="col">Archive</th>
+                @foreach ($columns as $column => $label)
+                    @php
+                        $sortable = isset($attemptSortUrl) && isset(\DRP\DeviceBackups\Backup\BackupStore::RESULT_SORT_COLUMNS[$column]);
+                        $sorted = $sortable && $attemptSort === $column;
+                    @endphp
+                    <th scope="col" @if ($sorted) aria-sort="{{ $attemptDirection === 'asc' ? 'ascending' : 'descending' }}" @endif>
+                        @if ($sortable)
+                            <a href="{{ $attemptSortUrl($column) }}">
+                                {{ $label }}
+                                <i class="fa {{ $sorted ? 'fa-sort-' . $attemptDirection : 'fa-sort' }}" aria-hidden="true"></i>
+                            </a>
+                        @else
+                            {{ $label }}
+                        @endif
+                    </th>
+                @endforeach
             </tr>
         </thead>
         <tbody>
@@ -47,7 +63,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ 5 + (int) $showDevice + (int) $showRun }}">No backup attempts found.</td>
+                    <td colspan="{{ count($columns) }}">No backup attempts found.</td>
                 </tr>
             @endforelse
         </tbody>

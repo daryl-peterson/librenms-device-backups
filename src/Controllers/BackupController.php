@@ -54,6 +54,13 @@ final class BackupController extends Controller {
         $run = filter_var($request->query('run'), FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) ?: null;
         $status = $request->query('status');
         $status = in_array($status, ['success', 'failed'], true) ? $status : null;
+        $search = $this->searchTerm($request->query('search'));
+        $sort = $request->query('sort');
+        $sort = is_string($sort) && isset(BackupStore::RESULT_SORT_COLUMNS[$sort]) ? $sort : 'started';
+        $direction = $request->query('direction');
+        $direction = in_array($direction, ['asc', 'desc'], true)
+            ? $direction
+            : ($sort === 'started' ? 'desc' : 'asc');
 
         $pname = $this->plugin->name;
 
@@ -61,10 +68,14 @@ final class BackupController extends Controller {
             return view($pname . '::backup-status', [
                 'plugin' => $this->plugin,
                 'runs' => $store->runs(),
-                'results' => $store->results(run: $run, status: $status),
+                'results' => $store->results(run: $run, status: $status, search: $search, sort: $sort, direction: $direction)
+                    ->fragment('backup-attempts'),
                 'run' => $run,
                 'selectedRun' => $run === null ? null : $store->findRun($run),
                 'status' => $status,
+                'search' => $search,
+                'sort' => $sort,
+                'direction' => $direction,
             ]);
         } catch (QueryException) {
             return $this->backupDatabaseSettings();
@@ -82,7 +93,7 @@ final class BackupController extends Controller {
      */
     public function devices(Request $request, ManualBackupRequests $requests): View|RedirectResponse {
         $store = $this->store();
-        $search = $this->deviceSearch($request->query('search'));
+        $search = $this->searchTerm($request->query('search'));
         $inventory = Target::inventory($search)->withExists([
             'attribs as backup_enrolled' => fn($query) => $query->where('attrib_type', Target::ATTRIBUTE),
         ])->simplePaginate(25)->withQueryString();
@@ -163,7 +174,7 @@ final class BackupController extends Controller {
     public function start(Request $request, Device $device, ManualBackupRequests $requests): RedirectResponse {
         $this->authorizePlugin();
         Gate::authorize('view', $device);
-        $search = $this->deviceSearch($request->query('search'));
+        $search = $this->searchTerm($request->query('search'));
         $redirect = $request->query('from') === 'devices'
             ? redirect()->route('device-backups.backups.devices', [
                 'search' => $search !== '' ? $search : null,
@@ -302,14 +313,14 @@ final class BackupController extends Controller {
     }
 
     /**
-     * Sanitize the device search input.
+     * Normalize a search term from a query parameter.
      *
      * @param mixed $value
      * @return string
      *
      * @since 0.0.1
      */
-    private function deviceSearch(mixed $value): string {
+    private function searchTerm(mixed $value): string {
         return is_string($value) ? mb_substr(trim($value), 0, 128) : '';
     }
 
