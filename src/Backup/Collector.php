@@ -10,7 +10,7 @@ use phpseclib4\Net\SSH2;
  * Collects and captures device configurations for backups.
  *
  * @package     librenms-device-backups
- * @author      Daryl Peterson <daryl.peterson@gmail.com>
+ * @author      Daryl Peterson <@gmail.com>
  * @copyright   Copyright (c) 2026, Daryl Peterson
  * @license     https://opensource.org MIT License
  * @link        https://github.com/daryl-peterson/
