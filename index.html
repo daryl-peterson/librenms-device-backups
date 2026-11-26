@@ -1,107 +1,296 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Device Backups for LibreNMS | SSH Configuration Backups</title>
-  <meta name="description" content="Schedule SSH backups of network device configurations and selected server files in LibreNMS. Review results and download encrypted ZIP archives.">
-  <link rel="canonical" href="https://daryl-peterson.github.io/librenms-device-backups/">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Device Backups for LibreNMS | SSH Configuration Backups">
-  <meta property="og:description" content="Schedule SSH backups of network device configurations and selected server files in LibreNMS. Review results and download encrypted ZIP archives.">
-  <meta property="og:url" content="https://daryl-peterson.github.io/librenms-device-backups/">
-  <meta property="og:image" content="https://daryl-peterson.github.io/librenms-device-backups/screenshots/screen-shot-04.png">
-  <meta property="og:image:alt" content="Backup scheduling settings in the LibreNMS Device Backups plugin">
-  <!-- Paste the Google Search Console HTML verification tag here for this URL-prefix property. -->
-  <style>
-    :root { color-scheme: light; --ink: #172d35; --muted: #435b64; --dark: #102f39; --paper: #f5f8f7; --line: #cbdad6; --accent: #006252; }
-    * { box-sizing: border-box; }
-    body { margin: 0; color: var(--ink); background: var(--paper); font: 1rem/1.65 system-ui, sans-serif; }
-    .wrap { width: min(68rem, calc(100% - 2.5rem)); margin-inline: auto; }
-    .reading { max-width: 48rem; }
-    a { color: var(--accent); text-underline-offset: .18em; }
-    a:focus-visible { outline: 3px solid #a64c16; outline-offset: 4px; }
-    header { background: var(--dark); color: #f6fffc; padding-block: 1.1rem; }
-    header a { color: #d4fff0; }
-    header a:focus-visible { outline-color: #ffce8f; }
-    nav, .actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem 1.5rem; }
-    .hero { padding-block: clamp(2.75rem, 8vw, 6rem); }
-    .hero p { max-width: 55ch; color: #d0e7e3; font-size: 1.15rem; }
-    .button { display: inline-block; padding: .6rem .95rem; background: #b6f2d9; color: #0d352d; border-radius: .4rem; font-weight: 700; text-decoration: none; }
-    .button:hover { background: #e0ffef; }
-    h1, h2, h3 { line-height: 1.2; text-wrap: balance; }
-    h1 { margin-block: 0 1rem; font-size: clamp(2.3rem, 6vw, 4.5rem); letter-spacing: -.045em; }
-    .reading h1 { font-size: clamp(2rem, 5vw, 3.4rem); }
-    h2 { font-size: clamp(1.45rem, 3vw, 2rem); margin-block: 0 .75rem; letter-spacing: -.025em; }
-    h3 { font-size: 1.15rem; }
-    .reading { padding-block: 2.5rem 4rem; }
-    .reading h2 { border-top: 1px solid var(--line); padding-top: 1.35rem; margin-top: 2.25rem; }
-    .reading li + li { margin-top: .5rem; }
-    section { padding-block: clamp(1.8rem, 5vw, 3.3rem); }
-    section + section { border-top: 1px solid var(--line); }
-    .grid { display: grid; gap: 1.5rem 2.5rem; }
-    .features { margin: 0; padding-left: 1.3rem; }
-    .features li + li { margin-top: .85rem; }
-    p { margin-block: 0 1rem; }
-    code { overflow-wrap: anywhere; }
-    pre { overflow-x: auto; padding: 1rem; border-radius: .5rem; background: var(--dark); color: #f6fffc; margin-block: 0 1rem; }
-    figure { margin: 0; }
-    img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: .5rem; }
-    figcaption, .muted { color: var(--muted); }
-    figcaption { font-size: .9rem; margin-top: .5rem; }
-    .table-scroll { overflow-x: auto; }
-    table { width: 100%; min-width: 34rem; border-collapse: collapse; }
-    th, td { padding: .6rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
-    footer { border-top: 1px solid var(--line); padding-block: 1.2rem; }
-    @media (min-width: 52rem) {
-      .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: start; }
-    }
-  </style>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content="6-wpEb-zEtPJN8zCFLriHrzgsiM2ZIIRFNlI_eZtiNw" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Device Backups for LibreNMS | SSH Configuration Backups</title>
+    <meta name="description"
+        content="Schedule SSH backups of network device configurations and selected server files in LibreNMS. Review results and download encrypted ZIP archives.">
+    <link rel="canonical" href="https://daryl-peterson.github.io/librenms-device-backups/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Device Backups for LibreNMS | SSH Configuration Backups">
+    <meta property="og:description"
+        content="Schedule SSH backups of network device configurations and selected server files in LibreNMS. Review results and download encrypted ZIP archives.">
+    <meta property="og:url" content="https://daryl-peterson.github.io/librenms-device-backups/">
+    <meta property="og:image" content="https://daryl-peterson.github.io/librenms-device-backups/screenshots/screen-shot-04.png">
+    <meta property="og:image:alt" content="Backup scheduling settings in the LibreNMS Device Backups plugin">
+    <!-- Paste the Google Search Console HTML verification tag here for this URL-prefix property. -->
+    <style>
+        :root {
+            color-scheme: light;
+            --ink: #172d35;
+            --muted: #435b64;
+            --dark: #102f39;
+            --paper: #f5f8f7;
+            --line: #cbdad6;
+            --accent: #006252;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: var(--paper);
+            font: 1rem/1.65 system-ui, sans-serif;
+        }
+
+        .wrap {
+            width: min(68rem, calc(100% - 2.5rem));
+            margin-inline: auto;
+        }
+
+        .reading {
+            max-width: 48rem;
+        }
+
+        a {
+            color: var(--accent);
+            text-underline-offset: .18em;
+        }
+
+        a:focus-visible {
+            outline: 3px solid #a64c16;
+            outline-offset: 4px;
+        }
+
+        header {
+            background: var(--dark);
+            color: #f6fffc;
+            padding-block: 1.1rem;
+        }
+
+        header a {
+            color: #d4fff0;
+        }
+
+        header a:focus-visible {
+            outline-color: #ffce8f;
+        }
+
+        nav,
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: .65rem 1.5rem;
+        }
+
+        .hero {
+            padding-block: clamp(2.75rem, 8vw, 6rem);
+        }
+
+        .hero p {
+            max-width: 55ch;
+            color: #d0e7e3;
+            font-size: 1.15rem;
+        }
+
+        .button {
+            display: inline-block;
+            padding: .6rem .95rem;
+            background: #b6f2d9;
+            color: #0d352d;
+            border-radius: .4rem;
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .button:hover {
+            background: #e0ffef;
+        }
+
+        h1,
+        h2,
+        h3 {
+            line-height: 1.2;
+            text-wrap: balance;
+        }
+
+        h1 {
+            margin-block: 0 1rem;
+            font-size: clamp(2.3rem, 6vw, 4.5rem);
+            letter-spacing: -.045em;
+        }
+
+        .reading h1 {
+            font-size: clamp(2rem, 5vw, 3.4rem);
+        }
+
+        h2 {
+            font-size: clamp(1.45rem, 3vw, 2rem);
+            margin-block: 0 .75rem;
+            letter-spacing: -.025em;
+        }
+
+        h3 {
+            font-size: 1.15rem;
+        }
+
+        .reading {
+            padding-block: 2.5rem 4rem;
+        }
+
+        .reading h2 {
+            border-top: 1px solid var(--line);
+            padding-top: 1.35rem;
+            margin-top: 2.25rem;
+        }
+
+        .reading li+li {
+            margin-top: .5rem;
+        }
+
+        section {
+            padding-block: clamp(1.8rem, 5vw, 3.3rem);
+        }
+
+        section+section {
+            border-top: 1px solid var(--line);
+        }
+
+        .grid {
+            display: grid;
+            gap: 1.5rem 2.5rem;
+        }
+
+        .features {
+            margin: 0;
+            padding-left: 1.3rem;
+        }
+
+        .features li+li {
+            margin-top: .85rem;
+        }
+
+        p {
+            margin-block: 0 1rem;
+        }
+
+        code {
+            overflow-wrap: anywhere;
+        }
+
+        pre {
+            overflow-x: auto;
+            padding: 1rem;
+            border-radius: .5rem;
+            background: var(--dark);
+            color: #f6fffc;
+            margin-block: 0 1rem;
+        }
+
+        figure {
+            margin: 0;
+        }
+
+        img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--line);
+            border-radius: .5rem;
+        }
+
+        figcaption,
+        .muted {
+            color: var(--muted);
+        }
+
+        figcaption {
+            font-size: .9rem;
+            margin-top: .5rem;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 34rem;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: .6rem;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        footer {
+            border-top: 1px solid var(--line);
+            padding-block: 1.2rem;
+        }
+
+        @media (min-width: 52rem) {
+            .grid {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+                align-items: start;
+            }
+        }
+    </style>
 </head>
+
 <body>
-  <header class="hero">
-    <div class="wrap">
-      <h1>Device Backups for LibreNMS</h1>
-      <p>Back up network device configurations and selected server files over SSH. Schedule backups, review results, and download encrypted archives from LibreNMS.</p>
-      <nav class="actions" aria-label="Project links">
-        <a class="button" href="./guide.html#installing">Installation guide</a>
-        <a href="https://github.com/daryl-peterson/librenms-device-backups">View source on GitHub</a>
-      </nav>
-    </div>
-  </header>
-  <main class="wrap">
-    <section class="grid" aria-labelledby="setup">
-      <div>
-        <h2 id="setup">Install in LibreNMS</h2>
-        <p>Run these commands from the LibreNMS installation directory as the LibreNMS service user. The plugin requires PHP 8.4 or later and a separate MySQL or MariaDB database.</p>
-      </div>
-      <div>
-        <pre><code>./lnms plugin:add daryl-peterson/librenms-device-backups dev-main
+    <header class="hero">
+        <div class="wrap">
+            <h1>Device Backups for LibreNMS</h1>
+            <p>Back up network device configurations and selected server files over SSH. Schedule backups, review results, and
+                download encrypted archives from LibreNMS.</p>
+            <nav class="actions" aria-label="Project links">
+                <a class="button" href="./guide.html#installing">Installation guide</a>
+                <a href="https://github.com/daryl-peterson/librenms-device-backups">View source on GitHub</a>
+            </nav>
+        </div>
+    </header>
+    <main class="wrap">
+        <section class="grid" aria-labelledby="setup">
+            <div>
+                <h2 id="setup">Install in LibreNMS</h2>
+                <p>Run these commands from the LibreNMS installation directory as the LibreNMS service user. The plugin requires PHP
+                    8.4 or later and a separate MySQL or MariaDB database.</p>
+            </div>
+            <div>
+                <pre><code>./lnms plugin:add daryl-peterson/librenms-device-backups dev-main
 ./lnms plugin:enable device-backups</code></pre>
-        <a href="./guide.html#configure-the-backup-database-and-archive-password">Configure storage and archive encryption</a>
-      </div>
-    </section>
-    <section class="grid" aria-labelledby="workflow">
-      <div>
-        <h2 id="workflow">Run and review backups</h2>
-        <ul class="features">
-          <li><a href="./guide.html#enroll-a-device-and-check-ssh">Enroll devices</a> from your LibreNMS inventory and test their SSH settings.</li>
-          <li><a href="./guide.html#run-and-monitor-backups">Run backups on demand or on a schedule</a> and see which devices succeeded or failed.</li>
-          <li><a href="./guide.html#download-and-restore">Download verified AES-256 ZIP archives</a> from the device’s backup history.</li>
-          <li><a href="./guide.html#supported-profiles">Check supported profiles</a> for network platforms and DNS or DHCP servers.</li>
-        </ul>
-      </div>
-      <figure>
-        <img src="./screenshots/screen-shot-04.png" width="930" height="550" loading="lazy" alt="The Device Backups Schedule screen with controls for backup days, time, and time zone">
-        <figcaption>The backup schedule applies to enrolled, enabled devices.</figcaption>
-      </figure>
-    </section>
-  </main>
-  <footer>
-    <nav class="wrap" aria-label="Project information">
-      <a href="https://github.com/daryl-peterson/librenms-device-backups/blob/main/LICENSE">MIT License</a>
-      <a href="https://github.com/daryl-peterson/librenms-device-backups/issues">Report an issue</a>
-    </nav>
-  </footer>
+                <a href="./guide.html#configure-the-backup-database-and-archive-password">Configure storage and archive
+                    encryption</a>
+            </div>
+        </section>
+        <section class="grid" aria-labelledby="workflow">
+            <div>
+                <h2 id="workflow">Run and review backups</h2>
+                <ul class="features">
+                    <li><a href="./guide.html#enroll-a-device-and-check-ssh">Enroll devices</a> from your LibreNMS inventory and
+                        test their SSH settings.</li>
+                    <li><a href="./guide.html#run-and-monitor-backups">Run backups on demand or on a schedule</a> and see which
+                        devices succeeded or failed.</li>
+                    <li><a href="./guide.html#download-and-restore">Download verified AES-256 ZIP archives</a> from the device’s
+                        backup history.</li>
+                    <li><a href="./guide.html#supported-profiles">Check supported profiles</a> for network platforms and DNS or DHCP
+                        servers.</li>
+                </ul>
+            </div>
+            <figure>
+                <img src="./screenshots/screen-shot-04.png" width="930" height="550" loading="lazy"
+                    alt="The Device Backups Schedule screen with controls for backup days, time, and time zone">
+                <figcaption>The backup schedule applies to enrolled, enabled devices.</figcaption>
+            </figure>
+        </section>
+    </main>
+    <footer>
+        <nav class="wrap" aria-label="Project information">
+            <a href="https://github.com/daryl-peterson/librenms-device-backups/blob/main/LICENSE">MIT License</a>
+            <a href="https://github.com/daryl-peterson/librenms-device-backups/issues">Report an issue</a>
+        </nav>
+    </footer>
 </body>
+
 </html>
