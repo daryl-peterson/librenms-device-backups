@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Device Backups Setup Guide for LibreNMS</title>
+  <meta name="description" content="Install Device Backups for LibreNMS, set up encrypted archive storage, enroll SSH devices, and run or schedule configuration backups.">
+  <link rel="canonical" href="https://daryl-peterson.github.io/librenms-device-backups/guide.html">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Device Backups Setup Guide for LibreNMS">
+  <meta property="og:description" content="Install Device Backups for LibreNMS, set up encrypted archive storage, enroll SSH devices, and run or schedule configuration backups.">
+  <meta property="og:url" content="https://daryl-peterson.github.io/librenms-device-backups/guide.html">
+  <meta property="og:image" content="https://daryl-peterson.github.io/librenms-device-backups/screenshots/screen-shot-04.png">
+  <meta property="og:image:alt" content="Backup scheduling settings in the LibreNMS Device Backups plugin">
+  <style>
+    :root { color-scheme: light; --ink: #172d35; --muted: #435b64; --dark: #102f39; --paper: #f5f8f7; --line: #cbdad6; --accent: #006252; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font: 1rem/1.65 system-ui, sans-serif; }
+    .wrap { width: min(68rem, calc(100% - 2.5rem)); margin-inline: auto; }
+    .reading { max-width: 48rem; }
+    a { color: var(--accent); text-underline-offset: .18em; }
+    a:focus-visible { outline: 3px solid #a64c16; outline-offset: 4px; }
+    header { background: var(--dark); color: #f6fffc; padding-block: 1.1rem; }
+    header a { color: #d4fff0; }
+    header a:focus-visible { outline-color: #ffce8f; }
+    nav, .actions { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem 1.5rem; }
+    .hero { padding-block: clamp(2.75rem, 8vw, 6rem); }
+    .hero p { max-width: 55ch; color: #d0e7e3; font-size: 1.15rem; }
+    .button { display: inline-block; padding: .6rem .95rem; background: #b6f2d9; color: #0d352d; border-radius: .4rem; font-weight: 700; text-decoration: none; }
+    .button:hover { background: #e0ffef; }
+    h1, h2, h3 { line-height: 1.2; text-wrap: balance; }
+    h1 { margin-block: 0 1rem; font-size: clamp(2.3rem, 6vw, 4.5rem); letter-spacing: -.045em; }
+    .reading h1 { font-size: clamp(2rem, 5vw, 3.4rem); }
+    h2 { font-size: clamp(1.45rem, 3vw, 2rem); margin-block: 0 .75rem; letter-spacing: -.025em; }
+    h3 { font-size: 1.15rem; }
+    .reading { padding-block: 2.5rem 4rem; }
+    .reading h2 { border-top: 1px solid var(--line); padding-top: 1.35rem; margin-top: 2.25rem; }
+    .reading li + li { margin-top: .5rem; }
+    section { padding-block: clamp(1.8rem, 5vw, 3.3rem); }
+    section + section { border-top: 1px solid var(--line); }
+    .grid { display: grid; gap: 1.5rem 2.5rem; }
+    .features { margin: 0; padding-left: 1.3rem; }
+    .features li + li { margin-top: .85rem; }
+    p { margin-block: 0 1rem; }
+    code { overflow-wrap: anywhere; }
+    pre { overflow-x: auto; padding: 1rem; border-radius: .5rem; background: var(--dark); color: #f6fffc; margin-block: 0 1rem; }
+    figure { margin: 0; }
+    img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: .5rem; }
+    figcaption, .muted { color: var(--muted); }
+    figcaption { font-size: .9rem; margin-top: .5rem; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; min-width: 34rem; border-collapse: collapse; }
+    th, td { padding: .6rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    footer { border-top: 1px solid var(--line); padding-block: 1.2rem; }
+    @media (min-width: 52rem) {
+      .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: start; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="wrap" aria-label="Project links">
+      <a href="./">Project home</a>
+      <a href="https://github.com/daryl-peterson/librenms-device-backups">View source on GitHub</a>
+    </nav>
+  </header>
+  <main class="wrap reading">
+<h1 id="device-backups-setup-guide">Device Backups setup guide</h1>
+<h2 id="installing">Installing</h2>
+<h3 id="install-from-packagist">Install from Packagist</h3>
+<p>From the LibreNMS installation directory, run these commands as the LibreNMS service user. Use PHP 8.4 or later with ZIP and AES-256 support, Phar, and zlib.</p>
+<pre class="bash"><code>./lnms plugin:add daryl-peterson/librenms-device-backups dev-main
+./lnms plugin:enable device-backups</code></pre>
+<h3 id="install-from-a-local-checkout">Install from a local checkout</h3>
+<p>Use PHP 8.4 or later with ZIP and AES-256 support, Phar, and zlib. Run the following commands from the LibreNMS installation directory as the LibreNMS service user.</p>
+<p>For a local checkout, register it as a Composer path repository and install the plugin. Replace the checkout path with your own.</p>
+<pre class="bash"><code>cd /opt/librenms
+./scripts/composer_wrapper.php config --global repositories.librenms-device-backups \
+  &#39;{&quot;type&quot;:&quot;path&quot;,&quot;url&quot;:&quot;/absolute/path/to/librenms-device-backups&quot;,&quot;options&quot;:{&quot;symlink&quot;:true}}&#39;
+./lnms plugin:add daryl-peterson/librenms-device-backups dev-main
+./lnms plugin:enable device-backups</code></pre>
+<p>During installation, Laravel's package discovery clears a route cache that is missing the <strong>Device Backups</strong> status route. If you pull route changes into a symlinked checkout, run <code>./lnms route:clear</code> and reload LibreNMS.</p>
+<h2 id="configure-the-backup-database-and-archive-password">Configure the backup database and archive password</h2>
+<ol type="1">
+<li>Open <strong>Device Backups → Settings</strong> and enter the credentials for the separate MySQL or MariaDB database. Click <strong>Test and Save Settings</strong>. The plugin saves the credentials after it verifies the connection.</li>
+<li>Click <strong>Run Migrations</strong> to apply the pending Device Backups migrations to the saved database. The database user needs permission to create and alter the plugin tables and indexes. This completes database setup and enables backup functions.</li>
+<li>Set <code>DEVICE_BACKUPS_ARCHIVE_PASSWORD</code> in LibreNMS's environment. Keep it with your recovery credentials. If you change it later, older ZIPs still need their original password.</li>
+<li>Optionally enter a recipient under <strong>Device Backups → Settings → Backup Report Email</strong> and click <strong>Test and Save Settings</strong>. LibreNMS sends one email after each scheduled backup run. It identifies the run, shows the completed and failed counts, and lists each failed device with its error. Manual backup results are available in <strong>Status</strong>.</li>
+</ol>
+<p>Click <strong>Send Test Email</strong> to check delivery to the address currently in the field before saving it.</p>
+<p>After changing the database connection, click <strong>Test and Save Settings</strong>, then <strong>Run Migrations</strong>. If an update adds a migration, run it from Settings before resuming backups.</p>
+<h2 id="enroll-a-device-and-check-ssh">Enroll a device and check SSH</h2>
+<p>Open <strong>Device Backups → SSH Status</strong>, find the device, and click <strong>Configure SSH</strong> or <strong>Edit SSH</strong>. The device overview also links to <strong>SSH Settings</strong>.</p>
+<ol type="1">
+<li>Choose a backup profile and enter the username, password, and port for the device's existing SSH account.</li>
+<li>Enter the verified SHA256 host key fingerprint. <strong>Read Host Key</strong> shows the fingerprint the device presents. Compare it with the device console or another trusted source before saving it.</li>
+<li>For switch profiles that require a CLI hostname, enter the name shown in the device prompt. Supply an enable password if the SSH account needs it to read the configuration. EdgeSwitch detects its CLI prompt automatically.</li>
+<li>Click <strong>Save SSH Settings</strong>, then <strong>Test Saved SSH Settings</strong>. The SSH Status page shows the last result and check time for each device. Manual tests and backup runs both update it.</li>
+</ol>
+<p>The plugin encrypts the saved SSH credentials. When editing an enrolled device, leave the password field blank to keep the saved password. <strong>Remove Enrollment</strong> stops future backups and keeps the device's stored archives.</p>
+<h2 id="run-and-monitor-backups">Run and monitor backups</h2>
+<ul>
+<li><strong>Run one device.</strong> Click <strong>Run Backup</strong> on the device overview, in its backup history, or on <strong>By Device</strong>. The LibreNMS scheduler checks queued requests each minute, including when recurring backups are paused.</li>
+<li><strong>Run on a schedule.</strong> Open <strong>Device Backups → Schedule</strong>, select the days, time, and time zone, enable scheduled backups, and click <strong>Save Schedule</strong>. The page shows the next run. The schedule applies to all enrolled, enabled devices.</li>
+<li><strong>Check results.</strong> <strong>Status</strong> shows backup runs, success and failure counts, and report email status. Filter backup attempts by run or result. <strong>By Device</strong> shows each device's latest attempt and links to its history.</li>
+</ul>
+<p>An existing <code>DEVICE_BACKUPS_SCHEDULED=true</code> setting supplies the Friday 6 p.m. America/Chicago schedule until you save a schedule in the web interface.</p>
+<h2 id="cli-commands">CLI commands</h2>
+<pre class="bash"><code>./lnms device-backups:configure DEVICE_ID
+./lnms device-backups:run DEVICE_ID --check
+./lnms device-backups:run DEVICE_ID
+./lnms device-backups:process-requests --check
+./lnms schedule:list</code></pre>
+<p>Use <code>--profile=PROFILE</code> with the configure command to select a server profile or override the detected device OS. Use <code>--disable</code> to remove enrollment. Omit the device ID from the run command to back up all enrolled, enabled devices.</p>
+<p>If the scheduler reports that <code>device-backups:process-requests</code> exited with code 1, check <strong>Device Backups → Status</strong> for a failed backup attempt. Run <code>./lnms device-backups:process-requests --check</code> to verify the queue schema and database read access without starting a backup.</p>
+<h2 id="supported-profiles">Supported profiles</h2>
+<div class="table-scroll" tabindex="0" role="region" aria-label="Supported backup profiles">
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Profiles</th>
+<th>Backup contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Dell, Cisco IOS/IOS XE, NX-OS, ASA, Nokia TiMOS</td>
+<td><code>dell</code>, <code>ios</code>, <code>nxos</code>, <code>asa</code>, <code>timos</code></td>
+<td>Running configuration as <code>running-config.txt</code></td>
+</tr>
+<tr>
+<td>Ubiquiti EdgeSwitch</td>
+<td><code>edgeswitch</code></td>
+<td>Running configuration as <code>running-config.txt</code></td>
+</tr>
+<tr>
+<td>Ubiquiti EdgeRouter</td>
+<td><code>edgeos</code></td>
+<td>Saved startup configuration from <code>/config/config.boot</code></td>
+</tr>
+<tr>
+<td>Ubiquiti airOS and classic airFiber</td>
+<td><code>airos</code>, <code>airfiber</code></td>
+<td>Configuration from <code>/tmp/system.cfg</code></td>
+</tr>
+<tr>
+<td>ISC DHCP, BIND DNS, and Kea</td>
+<td><code>dhcp</code>, <code>dns</code>, <code>dhcp-dns</code>, <code>dhcp-dns-old</code>, <code>dns-old</code>, <code>kea</code></td>
+<td>Service configuration and applicable lease files in <code>configuration-and-state.tar.gz</code></td>
+</tr>
+<tr>
+<td>Restricted DHCP and Kea helpers</td>
+<td><code>dhcp-helper</code>, <code>kea-helper</code></td>
+<td>Validated archive produced by the server helper</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Direct server profiles require an SSH account that can read the selected files. The helper profiles call the existing <code>/usr/local/sbin/netmonitor-dhcp-backup</code> or <code>/usr/local/sbin/netmonitor-kea-backup</code> with noninteractive sudo.</p>
+<p>Classic airFiber support covers the <code>AF…#</code> SSH prompt. UniFi controller backups, airFiber 60, LTU, Telnet, and the deployment-specific SMx export are outside the current profiles. <a href="https://help.uisp.com/hc/en-us/articles/22591188157079-EdgeRouter-Archiving-and-Managing-the-Configuration-Files">EdgeRouter configuration files</a> · <a href="https://dl.ui.com/guides/edgemax/EdgeSwitch_CLI_Command_Reference_UG.pdf">EdgeSwitch CLI reference</a> · <a href="https://github.com/ytti/oxidized/tree/master/lib/oxidized/model">airOS and airFiber collectors</a> · <a href="https://help.ui.com/hc/en-us/articles/360008976393-Backups-and-Migration-in-UniFi">UniFi backups</a></p>
+<h2 id="download-and-restore">Download and restore</h2>
+<p>Use <strong>Download Latest Backup</strong> on the device overview or in its backup history to get the newest successful archive. Choose an older backup ID in the history to download that archive.</p>
+<p>Web downloads use <code>&lt;short-system-name&gt;.YYYYMMDDHHSS.zip</code>, for example <code>carlton-1g-sw01.202611210142.zip</code>. The timestamp is the backup run's start time in the LibreNMS application time zone. When the system name is unavailable, the plugin uses the short form of the recorded hostname.</p>
+<p>You can also export by backup ID from the CLI:</p>
+<pre class="bash"><code>./lnms device-backups:export BACKUP_ID /path/to/new-backup.zip</code></pre>
+<p>The plugin verifies the stored checksum before delivering the ZIP. Open it with the archive password and follow the device or service's restore procedure.</p>
+  </main>
+  <footer>
+    <nav class="wrap" aria-label="Project information">
+      <a href="https://github.com/daryl-peterson/librenms-device-backups/blob/main/LICENSE">MIT License</a>
+      <a href="https://github.com/daryl-peterson/librenms-device-backups/issues">Report an issue</a>
+    </nav>
+  </footer>
+</body>
+</html>
